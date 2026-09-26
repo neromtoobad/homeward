@@ -1,0 +1,23 @@
+{
+  "name": "homeward",
+  "version": "0.0.1",
+  "description": "Send dollars home in one tap: AUSD remittances on Monad with passkeys",
+  "scripts": {
+    "compile": "tsx scripts/compile.ts",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@category-labs/mera": "^0.2.0",
+    "viem": "^2.56.9"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "solc": "^0.8.30",
+    "tevm": "^1.0.0-next.149",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "private": true
+}
