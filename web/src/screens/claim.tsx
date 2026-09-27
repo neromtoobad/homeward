@@ -7,6 +7,7 @@ import { type LinkInfo, api } from "../lib/api.ts";
 import { openFromLink } from "../lib/crypto.ts";
 import { ngn, seconds, short, usd } from "../lib/format.ts";
 import { type Settled, useHomeward } from "../state.tsx";
+import { type Creature, CourierSprite, CreaturePicker, CreatureSprite, isCreature } from "../cast.tsx";
 import { HouseMark } from "./welcome.tsx";
 import { ErrorLine, TxLink, errorText } from "./ui.tsx";
 
@@ -21,6 +22,8 @@ export function Claim() {
   const [info, setInfo] = useState<LinkInfo | null>(null);
   const [message, setMessage] = useState<{ from: string; note: string } | null>(null);
   const [name, setName] = useState("");
+  const [creature, setCreature] = useState<Creature | null>(null);
+  const [receiving, setReceiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Settled | null>(null);
   const wantsClaim = useRef(false);
@@ -43,12 +46,16 @@ export function Claim() {
   useEffect(() => {
     if (!wantsClaim.current || !session || !vault || !secret || done) return;
     wantsClaim.current = false;
+    setReceiving(true);
     claim(secret, from, message?.note || undefined)
       .then((settled) => {
         setDone(settled);
         history.replaceState(null, "", "/c");
       })
-      .catch((e) => setError(errorText(e)));
+      .catch((e) => {
+        setReceiving(false);
+        setError(errorText(e));
+      });
   }, [session, vault, secret, done, claim, from, message]);
 
   async function receive(fn?: () => Promise<void>) {
@@ -58,22 +65,27 @@ export function Claim() {
       if (fn) await fn();
       else if (session && vault && secret) {
         wantsClaim.current = false;
+        setReceiving(true);
         setDone(await claim(secret, from, message?.note || undefined));
         history.replaceState(null, "", "/c");
       }
     } catch (e) {
       wantsClaim.current = false;
+      setReceiving(false);
       setError(errorText(e));
     }
   }
 
   const dollars = info ? fromUnits(info.amount) : 0;
+  const mine: Creature = isCreature(vault?.character) ? vault.character : (creature ?? "pangolin");
+  const theirs: Creature | null = isCreature(info?.senderCharacter) ? info.senderCharacter : null;
 
   if (done) {
     return (
       <section className="done">
-        <div className="check" aria-hidden>
-          ✓
+        <div className="stage">
+          <CreatureSprite kind={mine} pose="cheer" size={150} label="You" />
+          <CourierSprite pose="salute" size={110} />
         </div>
         <h2 className="display">{usd(dollars)} is yours</h2>
         <p className="lede">
@@ -100,7 +112,19 @@ export function Claim() {
 
   return (
     <section className="claim">
-      <HouseMark />
+      <div className="stage claim-stage">
+        {receiving ? (
+          <>
+            <CourierSprite pose="handoff" size={104} />
+            <CreatureSprite kind={mine} pose="catch" size={140} flip label="You" />
+          </>
+        ) : (
+          <>
+            {theirs && <CreatureSprite kind={theirs} pose="wave" size={96} label={from} />}
+            <CourierSprite pose="perch" size={140} />
+          </>
+        )}
+      </div>
       {!info && !error && <p className="muted">Opening your link…</p>}
       {info && (
         <>
@@ -120,14 +144,16 @@ export function Claim() {
               className="stack"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (name.trim()) receive(() => create(name.trim()));
+                if (name.trim() && creature) receive(() => create(name.trim(), creature));
               }}
             >
               <label className="field">
                 <span>Your first name</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="So they know it reached you" maxLength={40} />
               </label>
-              <button className="primary big" disabled={!name.trim() || Boolean(busy)}>
+              <span className="field-label">Pick your creature</span>
+              <CreaturePicker value={creature} onChange={setCreature} />
+              <button className="primary big" disabled={!name.trim() || !creature || Boolean(busy)}>
                 Receive with passkey
               </button>
               <button type="button" className="ghost" disabled={Boolean(busy)} onClick={() => receive(unlock)}>

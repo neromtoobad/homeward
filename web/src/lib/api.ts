@@ -42,6 +42,7 @@ export type TxResult = { hash: Hex; blockNumber: number };
 export type LinkInfo = {
   sender: Address;
   senderHandle: string | null;
+  senderCharacter: string | null;
   amount: string;
   claimed: boolean;
   expiry: number;
@@ -50,7 +51,7 @@ export type LinkInfo = {
   recipient: Address | null;
 };
 
-export type Profile = { address: Address; handle: string | null; inboxKey: Hex };
+export type Profile = { address: Address; handle: string | null; inboxKey: Hex; character: string | null };
 
 export type OrderInfo = {
   id: number;
@@ -110,8 +111,8 @@ export const api = {
 
   profile: (address: Address) => call<Profile>("GET", `/api/profiles/${address}`),
   handle: (handle: string) => call<Profile>("GET", `/api/handles/${encodeURIComponent(handle)}`),
-  putProfile: (account: LocalAccount, handle: string | null, inboxKey: Hex) =>
-    call<{ ok: true }>("PUT", `/api/profiles/${account.address}`, { handle, inboxKey }, account),
+  putProfile: (account: LocalAccount, handle: string | null, inboxKey: Hex, character: string | null) =>
+    call<{ ok: true }>("PUT", `/api/profiles/${account.address}`, { handle, inboxKey, character }, account),
   notes: (account: LocalAccount, after = 0) =>
     call<{ id: number; sealed: string; tx_hash: string | null; created_at: number }[]>(
       "GET",

@@ -309,11 +309,27 @@ select {
 /* ---------------------------------------------------------------- welcome */
 
 .welcome {
-  padding-top: 8vh;
+  padding-top: 2vh;
 }
 
 .welcome-mark {
   margin-bottom: 12px;
+}
+
+.welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.welcome-hero .courier img {
+  animation: hover 1.6s ease-in-out infinite;
+}
+
+.field-label {
+  font-size: 13px;
+  color: var(--muted);
 }
 
 /* ------------------------------------------------------------------- home */
@@ -676,4 +692,214 @@ button.row {
   button:active {
     transform: none;
   }
+}
+
+/* ------------------------------------------------------------------ cast */
+
+.creature,
+.courier {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.creature img,
+.courier img {
+  height: 100%;
+  width: auto;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 6px 10px #0000002a);
+}
+
+.creature img {
+  animation:
+    pop 0.38s cubic-bezier(0.3, 1.6, 0.5, 1),
+    breathe 3.4s ease-in-out 0.38s infinite;
+}
+
+.creature.pose-cheer img {
+  animation:
+    pop 0.38s cubic-bezier(0.3, 1.6, 0.5, 1),
+    hop 0.75s ease-in-out 0.38s infinite;
+}
+
+.creature.pose-worried img {
+  animation:
+    pop 0.38s cubic-bezier(0.3, 1.6, 0.5, 1),
+    shiver 2.6s ease-in-out 0.38s infinite;
+}
+
+.courier img {
+  animation: pop 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.courier.pose-fly-up img,
+.courier.pose-fly-down img {
+  animation: none;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.9) translateY(6px);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.015, 0.985);
+  }
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  15% {
+    transform: translateY(0) scale(1.04, 0.95);
+  }
+  45% {
+    transform: translateY(-14px) scale(0.98, 1.03);
+  }
+}
+
+@keyframes shiver {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  4%,
+  12% {
+    transform: translateX(-2px);
+  }
+  8%,
+  16% {
+    transform: translateX(2px);
+  }
+  20% {
+    transform: translateX(0);
+  }
+}
+
+.delivery {
+  position: relative;
+  height: 230px;
+  margin: 8px 0 4px;
+}
+
+.delivery-from {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+
+.delivery-to {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+
+.delivery-sky {
+  position: absolute;
+  left: 18%;
+  right: 34%;
+  top: 0;
+  height: 150px;
+}
+
+/* With nobody to hand to, the courier lands on the roof at the far side. */
+.delivery-sky.to-roof {
+  right: 10%;
+}
+
+.delivery-courier {
+  position: absolute;
+  top: 24px;
+  will-change: left, transform;
+}
+
+.delivery-courier.hovering img {
+  animation: hover 0.9s ease-in-out infinite;
+}
+
+@keyframes hover {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.stage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 4px;
+  margin: 8px 0 0;
+}
+
+.picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.pick.on {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.home-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.home-hero .balance {
+  padding: 20px 0 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .creature img,
+  .creature.pose-cheer img,
+  .creature.pose-worried img,
+  .courier img,
+  .delivery-courier.hovering img {
+    animation: none;
+  }
+}
+
+.claim-stage {
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
 }

@@ -24,6 +24,7 @@ import {
   unlockPrivate,
 } from "./lib/keys.ts";
 import { type Contact, type VaultData, emptyVault, loadVault, saveVault, upsertContact } from "./lib/vault.ts";
+import type { Creature } from "./cast.tsx";
 
 const LINK_DAYS = 14;
 
@@ -35,11 +36,12 @@ type State = {
   balance: bigint | null;
   orders: OrderInfo[];
   payments: IndexedPayment[] | null;
+  arrivedAt: number;
   busy: string | null;
 };
 
 type Actions = {
-  create(name: string): Promise<void>;
+  create(name: string, character: Creature): Promise<void>;
   unlock(): Promise<void>;
   lock(): void;
   refresh(): Promise<void>;
@@ -58,6 +60,7 @@ type Actions = {
   }): Promise<Hex>;
   cancelOrder(id: number): Promise<Hex>;
   setHandle(handle: string): Promise<void>;
+  setCharacter(character: Creature): Promise<void>;
   resolveRecipient(input: string): Promise<Contact>;
 };
 
@@ -78,6 +81,9 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [vault, setVault] = useState<VaultData | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
+  /** When money last arrived, so your creature can celebrate it. */
+  const [arrivedAt, setArrivedAt] = useState(0);
+  const lastBalance = useRef<bigint | null>(null);
   const [orders, setOrders] = useState<OrderInfo[]>([]);
   // From the Envio indexer when it's configured; null means "use the vault".
   const [payments, setPayments] = useState<IndexedPayment[] | null>(null);
@@ -140,7 +146,10 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
       api.orders(session.account.address).catch(() => [] as OrderInfo[]),
       config?.indexer ? api.activity(session.account.address).catch(() => null) : Promise.resolve(null),
     ]);
-    setBalance(BigInt(b.ausd));
+    const next = BigInt(b.ausd);
+    if (lastBalance.current !== null && next > lastBalance.current) setArrivedAt(Date.now());
+    lastBalance.current = next;
+    setBalance(next);
     setOrders(o);
     if (a) setPayments(a);
   }, [session, config]);
@@ -153,12 +162,13 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
   }, [session, refresh]);
 
   /** Loads the vault, publishes the inbox key, and pulls in new notes. */
-  const hydrate = useCallback(async (s: Session, name?: string) => {
+  const hydrate = useCallback(async (s: Session, name?: string, character?: Creature) => {
     if (!s.privateKeys) await unlockPrivate(s);
     const keys = s.privateKeys!;
     const loaded = await loadVault(s);
     vaultVersion.current = loaded.version;
-    let data = loaded.data ?? emptyVault(name ?? "");
+    let data = loaded.data ?? emptyVault(name ?? "", character ?? null);
+    if (character && data.character !== character) data = { ...data, character };
     if (name && !data.name) data = { ...data, name };
 
     let changed = !loaded.data;
@@ -203,7 +213,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    await api.putProfile(s.account, data.handle, keys.inboxPublic).catch(console.error);
+    await api.putProfile(s.account, data.handle, keys.inboxPublic, data.character ?? null).catch(console.error);
     if (changed) vaultVersion.current = await saveVault(s, data, vaultVersion.current);
     setVault(data);
   }, []);
@@ -218,11 +228,11 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const doCreate = useCallback(
-    (name: string) =>
+    (name: string, character: Creature) =>
       withBusy("Creating your Homeward", async () => {
         const s = await createAccount(name);
         setSession(s);
-        await hydrate(s, name);
+        await hydrate(s, name, character);
       }),
     [hydrate, withBusy],
   );
@@ -268,11 +278,11 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
     const text = input.trim();
     if (isAddress(text)) {
       const p = await api.profile(text).catch(() => null);
-      return { name: p?.handle ? `@${p.handle}` : text, address: text, handle: p?.handle, inboxKey: p?.inboxKey };
+      return { name: p?.handle ? `@${p.handle}` : text, address: text, handle: p?.handle, inboxKey: p?.inboxKey, character: p?.character };
     }
     const handle = text.replace(/^@/, "");
     const p = await api.handle(handle);
-    return { name: `@${p.handle}`, address: p.address, handle: p.handle, inboxKey: p.inboxKey };
+    return { name: `@${p.handle}`, address: p.address, handle: p.handle, inboxKey: p.inboxKey, character: p.character };
   }, []);
 
   const sendTo = useCallback(
@@ -281,7 +291,9 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
         if (!session || !vault) throw new Error("locked");
         await stepUp(amountUsd);
         const value = toUnits(amountUsd);
-        const inboxKey = contact.inboxKey ?? (await api.profile(contact.address).catch(() => null))?.inboxKey;
+        const profile = contact.inboxKey && contact.character ? null : await api.profile(contact.address).catch(() => null);
+        const inboxKey = contact.inboxKey ?? profile?.inboxKey;
+        const character = contact.character ?? profile?.character;
         const sealedNote = inboxKey
           ? await seal(
               inboxKey,
@@ -307,7 +319,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
                 ...v.sent,
               ],
             },
-            { ...contact, inboxKey: inboxKey ?? contact.inboxKey },
+            { ...contact, inboxKey: inboxKey ?? contact.inboxKey, character: character ?? contact.character },
           ),
         );
         await refresh();
@@ -376,6 +388,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
               name: info.senderHandle ? `@${info.senderHandle}` : fromName,
               address: info.sender,
               handle: info.senderHandle,
+              character: info.senderCharacter,
             });
           }
           return next;
@@ -436,10 +449,19 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
   const setHandle = useCallback(
     async (handle: string) => {
       if (!session?.privateKeys) throw new Error("locked");
-      await api.putProfile(session.account, handle, session.privateKeys.inboxPublic);
+      await api.putProfile(session.account, handle, session.privateKeys.inboxPublic, vault?.character ?? null);
       await updateVault((v) => ({ ...v, handle }));
     },
-    [session, updateVault],
+    [session, vault, updateVault],
+  );
+
+  const setCharacter = useCallback(
+    async (character: Creature) => {
+      if (!session?.privateKeys) throw new Error("locked");
+      await api.putProfile(session.account, vault?.handle ?? null, session.privateKeys.inboxPublic, character);
+      await updateVault((v) => ({ ...v, character }));
+    },
+    [session, vault, updateVault],
   );
 
   const value: State & Actions = {
@@ -450,6 +472,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
     balance,
     orders,
     payments,
+    arrivedAt,
     busy,
     create: doCreate,
     unlock: doUnlock,
@@ -463,6 +486,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
     schedule,
     cancelOrder,
     setHandle,
+    setCharacter,
     resolveRecipient,
   };
   return <HomewardContext.Provider value={value}>{children}</HomewardContext.Provider>;

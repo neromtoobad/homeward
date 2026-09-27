@@ -4,6 +4,7 @@ import { fromUnits } from "../../../shared/money.ts";
 import { cadence, ngn, usd, when } from "../lib/format.ts";
 import type { Contact } from "../lib/vault.ts";
 import { useHomeward } from "../state.tsx";
+import { CourierSprite } from "../cast.tsx";
 import { ErrorLine, TopBar, TxLink, errorText } from "./ui.tsx";
 
 const PERIODS = { daily: 86400, weekly: 7 * 86400, monthly: 30 * 86400 } as const;
@@ -66,6 +67,9 @@ export function Schedule() {
   return (
     <section className="schedule">
       <TopBar title="Standing orders" />
+      <div className="stage">
+        <CourierSprite pose="sleep" size={120} />
+      </div>
       <p className="lede">
         Set it once. Homeward sets the money aside now and releases it on schedule, with the naira rate recorded on each payment.
       </p>

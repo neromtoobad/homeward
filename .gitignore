@@ -8,3 +8,5 @@ dist/
 data/
 .claude/
 data-local/
+art/sheets/*.png
+art/sheets/cut/

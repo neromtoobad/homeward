@@ -3,10 +3,11 @@ import { navigate } from "../app.tsx";
 import { HIDDEN_LIMIT_MS, IDLE_LIMIT_MS, PROMPT_FREE_LIMIT_USD, exportPhrase } from "../lib/keys.ts";
 import { short, usd } from "../lib/format.ts";
 import { useHomeward } from "../state.tsx";
+import { CreaturePicker, isCreature } from "../cast.tsx";
 import { ErrorLine, TopBar, errorText } from "./ui.tsx";
 
 export function Me() {
-  const { vault, session, config, setHandle, lock } = useHomeward();
+  const { vault, session, config, setHandle, setCharacter, lock } = useHomeward();
   const [handle, setHandleInput] = useState(vault?.handle ?? "");
   const [phrase, setPhrase] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +26,15 @@ export function Me() {
   return (
     <section className="me">
       <TopBar title={vault.name || "You"} />
+
+      <div className="card">
+        <h3>Your creature</h3>
+        <p className="muted small">It's who people see when they send to you, and when you send to them.</p>
+        <CreaturePicker
+          value={isCreature(vault.character) ? vault.character : null}
+          onChange={(c) => run(() => setCharacter(c))}
+        />
+      </div>
 
       <div className="card">
         <h3>Your Homeward name</h3>

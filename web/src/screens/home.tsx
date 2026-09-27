@@ -3,7 +3,8 @@ import type { Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { fromUnits } from "../../../shared/money.ts";
 import { navigate } from "../app.tsx";
-import { type ParsedIntent, api } from "../lib/api.ts";
+import { type OrderInfo, type ParsedIntent, api } from "../lib/api.ts";
+import { type Creature, CreatureSprite, type Pose, isCreature } from "../cast.tsx";
 import { buildActivity } from "../lib/activity.ts";
 import { ago, cadence, ngn, usd, when } from "../lib/format.ts";
 import { useHomeward } from "../state.tsx";
@@ -11,7 +12,14 @@ import type { SentItem } from "../lib/vault.ts";
 import { ErrorLine, TxLink, errorText } from "./ui.tsx";
 
 export function Home() {
-  const { vault, balance, rate, orders, config, session, payments } = useHomeward();
+  const { vault, balance, rate, orders, config, session, payments, arrivedAt } = useHomeward();
+  // Re-render once the celebration is over.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!arrivedAt) return;
+    const t = setTimeout(() => setTick((n) => n + 1), CHEER_MS + 50);
+    return () => clearTimeout(t);
+  }, [arrivedAt]);
   const [open, setOpen] = useState<string | null>(null);
   if (!vault || !session) return null;
   const dollars = balance === null ? null : fromUnits(balance);
@@ -19,6 +27,8 @@ export function Home() {
   const outgoing = orders.filter((o) => o.active && o.sender.toLowerCase() === me);
 
   const activity = buildActivity(vault, session.account.address, payments);
+  const creature: Creature = isCreature(vault.character) ? vault.character : "pangolin";
+  const pose = moodFor(balance, orders, me, arrivedAt);
 
   return (
     <section className="home">
@@ -29,10 +39,13 @@ export function Home() {
         </button>
       </header>
 
-      <div className="balance">
-        <span className="label">Your dollars</span>
-        <span className="amount display">{dollars === null ? <span className="shimmer" aria-label="Loading balance" /> : usd(dollars)}</span>
-        {rate && dollars !== null && <span className="sub">≈ {ngn(dollars * rate)}</span>}
+      <div className="home-hero">
+        <div className="balance">
+          <span className="label">Your dollars</span>
+          <span className="amount display">{dollars === null ? <span className="shimmer" aria-label="Loading balance" /> : usd(dollars)}</span>
+          {rate && dollars !== null && <span className="sub">≈ {ngn(dollars * rate)}</span>}
+        </div>
+        <CreatureSprite kind={creature} pose={pose} size={132} label={`Your ${creature}`} />
       </div>
 
       <div className="actions">
@@ -98,6 +111,20 @@ export function Home() {
       </div>
     </section>
   );
+}
+
+const CHEER_MS = 4000;
+
+/**
+ * Your creature's mood, from real numbers only: it cheers for a few seconds
+ * when money actually lands, and worries when someone keeps you topped up
+ * and your balance has fallen under a quarter of that target.
+ */
+function moodFor(balance: bigint | null, orders: OrderInfo[], me: string, arrivedAt: number): Pose {
+  if (arrivedAt && Date.now() - arrivedAt < CHEER_MS) return "cheer";
+  const topUp = orders.find((o) => o.active && o.mode === "topup" && o.recipient.toLowerCase() === me);
+  if (topUp && balance !== null && balance * 4n < BigInt(topUp.amount)) return "worried";
+  return "idle";
 }
 
 /** A link you sent: whether it was received, and a way to re-share or take it back from any device. */

@@ -2,10 +2,12 @@ import { useMemo, useState } from "react";
 import type { Hex } from "viem";
 import { fromUnits } from "../../../shared/money.ts";
 import { navigate } from "../app.tsx";
+import { api } from "../lib/api.ts";
 import { ngn, seconds, usd } from "../lib/format.ts";
 import { PROMPT_FREE_LIMIT_USD } from "../lib/keys.ts";
 import type { Contact } from "../lib/vault.ts";
 import { useHomeward } from "../state.tsx";
+import { type Creature, Delivery, isCreature } from "../cast.tsx";
 import { ErrorLine, TopBar, TxLink, errorText } from "./ui.tsx";
 
 type Target = { kind: "contact"; contact: Contact } | { kind: "link"; label: string };
@@ -25,6 +27,8 @@ export function Send() {
   const [linkLabel, setLinkLabel] = useState(params.get("to") ?? "");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ hash: Hex; ms: number; url?: string } | null>(null);
+  // Set the moment Send is tapped, so the courier takes off before the payment lands.
+  const [flight, setFlight] = useState<{ to: Creature | null; toRoof: boolean; name: string } | null>(null);
 
   if (!vault) return null;
   const n = Number(amount);
@@ -46,14 +50,33 @@ export function Send() {
     setError(null);
     try {
       const rounded = Math.round(usdAmount * 100) / 100;
-      if (target.kind === "contact") setDone(await sendTo(target.contact, rounded, note));
-      else setDone(await makeLink(rounded, note, target.label));
+      if (target.kind === "contact") {
+        // Contacts saved before creatures existed don't know theirs yet.
+        const known = target.contact.character ?? (await api.profile(target.contact.address).catch(() => null))?.character;
+        const to = isCreature(known) ? known : null;
+        setFlight({ to, toRoof: !to, name: target.contact.name });
+        setDone(await sendTo(target.contact, rounded, note));
+      } else {
+        setFlight({ to: null, toRoof: true, name: target.label || "them" });
+        setDone(await makeLink(rounded, note, target.label));
+      }
     } catch (e) {
+      setFlight(null);
       setError(errorText(e));
     }
   }
 
-  if (done) return <Done hash={done.hash} ms={done.ms} url={done.url} amount={usdAmount} explorer={config?.explorer} />;
+  if (flight) {
+    return (
+      <Done
+        from={isCreature(vault.character) ? vault.character : "pangolin"}
+        flight={flight}
+        done={done}
+        amount={usdAmount}
+        explorer={config?.explorer}
+      />
+    );
+  }
 
   return (
     <section className="send">
@@ -141,17 +164,35 @@ export function Send() {
   );
 }
 
-function Done({ hash, ms, url, amount, explorer }: { hash: Hex; ms: number; url?: string; amount: number; explorer?: string }) {
+function Done({
+  from,
+  flight,
+  done,
+  amount,
+  explorer,
+}: {
+  from: Creature;
+  flight: { to: Creature | null; toRoof: boolean; name: string };
+  done: { hash: Hex; ms: number; url?: string } | null;
+  amount: number;
+  explorer?: string;
+}) {
+  const url = done?.url;
   const message = `I sent you ${usd(amount)} on Homeward. Tap to receive it: ${url}`;
   return (
     <section className="done">
-      <div className="check" aria-hidden>
-        ✓
-      </div>
-      <h2 className="display">{url ? "Your link is ready" : "Sent"}</h2>
-      {url ? (
+      <Delivery from={from} to={flight.to} toRoof={flight.toRoof} confirmed={Boolean(done)} />
+      <h2 className="display">
+        {!done ? `On its way to ${flight.name}…` : url ? "Waiting on their roof" : `${flight.name} has it`}
+      </h2>
+      {!done ? (
+        <p className="lede">Your courier lands the moment Monad confirms.</p>
+      ) : url ? (
         <>
-          <p className="lede">Anyone with this link can receive {usd(amount)}. Share it only with them. It comes back to you after 14 days if nobody opens it.</p>
+          <p className="lede">
+            Your courier is holding {usd(amount)} on their roof. Send them the link and it hands it over when they tap. Only share it with
+            them. It flies back to you after 14 days if nobody opens it.
+          </p>
           <div className="stack">
             <a className="primary" href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">
               Share on WhatsApp
@@ -161,20 +202,22 @@ function Done({ hash, ms, url, amount, explorer }: { hash: Hex; ms: number; url?
                 Share another way
               </button>
             )}
-            <button className="ghost" onClick={() => navigator.clipboard?.writeText(url)}>
+            <button className="ghost" onClick={() => navigator.clipboard?.writeText(url ?? "")}>
               Copy link
             </button>
           </div>
         </>
       ) : (
         <p className="lede">
-          {usd(amount)} arrived. Confirmed on Monad in {seconds(ms)}.
+          {usd(amount)} arrived. Confirmed on Monad in {seconds(done.ms)}.
         </p>
       )}
-      <TxLink hash={hash} explorer={explorer} />
-      <button className="ghost" onClick={() => navigate("/")}>
-        Done
-      </button>
+      {done && <TxLink hash={done.hash} explorer={explorer} />}
+      {done && (
+        <button className="ghost" onClick={() => navigate("/")}>
+          Done
+        </button>
+      )}
     </section>
   );
 }

@@ -37,11 +37,13 @@ export function openStore(dir: string) {
       created_at INTEGER NOT NULL
     );
   `);
-  // Added after launch: who a link paid out to.
-  try {
-    db.exec("ALTER TABLE links ADD COLUMN recipient TEXT");
-  } catch {
-    // already there
+  // Columns added after launch.
+  for (const sql of ["ALTER TABLE links ADD COLUMN recipient TEXT", "ALTER TABLE profiles ADD COLUMN character TEXT"]) {
+    try {
+      db.exec(sql);
+    } catch {
+      // already there
+    }
   }
 
   const lower = (a: string) => a.toLowerCase();
@@ -66,24 +68,25 @@ export function openStore(dir: string) {
     },
 
     getProfile(address: string) {
-      return db.prepare("SELECT address, handle, inbox_key FROM profiles WHERE address = ?").get(lower(address)) as
-        | { address: string; handle: string | null; inbox_key: string }
+      return db.prepare("SELECT address, handle, inbox_key, character FROM profiles WHERE address = ?").get(lower(address)) as
+        | { address: string; handle: string | null; inbox_key: string; character: string | null }
         | undefined;
     },
 
     findHandle(handle: string) {
-      return db.prepare("SELECT address, handle, inbox_key FROM profiles WHERE handle = ?").get(handle.toLowerCase()) as
-        | { address: string; handle: string; inbox_key: string }
+      return db.prepare("SELECT address, handle, inbox_key, character FROM profiles WHERE handle = ?").get(handle.toLowerCase()) as
+        | { address: string; handle: string; inbox_key: string; character: string | null }
         | undefined;
     },
 
-    putProfile(address: string, handle: string | null, inboxKey: string) {
+    putProfile(address: string, handle: string | null, inboxKey: string, character: string | null) {
       const owner = handle ? this.findHandle(handle) : undefined;
       if (owner && owner.address !== lower(address)) return false;
       db.prepare(
-        `INSERT INTO profiles (address, handle, inbox_key, updated_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT(address) DO UPDATE SET handle = excluded.handle, inbox_key = excluded.inbox_key, updated_at = excluded.updated_at`,
-      ).run(lower(address), handle?.toLowerCase() ?? null, inboxKey, Date.now());
+        `INSERT INTO profiles (address, handle, inbox_key, character, updated_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(address) DO UPDATE SET handle = excluded.handle, inbox_key = excluded.inbox_key,
+           character = excluded.character, updated_at = excluded.updated_at`,
+      ).run(lower(address), handle?.toLowerCase() ?? null, inboxKey, character, Date.now());
       return true;
     },
 

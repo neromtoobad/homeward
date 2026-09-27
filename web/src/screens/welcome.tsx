@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { CREATURES, type Creature, CourierSprite, CreaturePicker, CreatureSprite } from "../cast.tsx";
 import { useHomeward } from "../state.tsx";
 import { ErrorLine, errorText } from "./ui.tsx";
 
 export function Welcome({ returning }: { returning: boolean }) {
   const { create, unlock, busy } = useHomeward();
   const [name, setName] = useState("");
+  const [creature, setCreature] = useState<Creature | null>(null);
   const [mode, setMode] = useState<"start" | "create">("start");
   const [error, setError] = useState<string | null>(null);
 
@@ -19,8 +21,13 @@ export function Welcome({ returning }: { returning: boolean }) {
 
   return (
     <section className="welcome">
-      <div className="welcome-mark" aria-hidden>
-        <HouseMark />
+      <div className="welcome-hero" aria-hidden>
+        <CourierSprite pose="fly-up" size={132} />
+        <div className="stage">
+          {CREATURES.map((c) => (
+            <CreatureSprite key={c} kind={c} pose="idle" size={78} />
+          ))}
+        </div>
       </div>
       <h1 className="display">
         Send dollars home
@@ -36,7 +43,7 @@ export function Welcome({ returning }: { returning: boolean }) {
           className="stack"
           onSubmit={(e) => {
             e.preventDefault();
-            if (name.trim()) run(() => create(name.trim()));
+            if (name.trim() && creature) run(() => create(name.trim(), creature));
           }}
         >
           <label className="field">
@@ -50,7 +57,9 @@ export function Welcome({ returning }: { returning: boolean }) {
               maxLength={40}
             />
           </label>
-          <button className="primary" disabled={!name.trim() || Boolean(busy)}>
+          <span className="field-label">Pick your creature</span>
+          <CreaturePicker value={creature} onChange={setCreature} />
+          <button className="primary" disabled={!name.trim() || !creature || Boolean(busy)}>
             Create with passkey
           </button>
           <button type="button" className="ghost" onClick={() => setMode("start")}>

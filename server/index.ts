@@ -212,6 +212,7 @@ app.get("/api/links/:claimKey", async (c) => {
   return c.json({
     sender,
     senderHandle: profile?.handle ?? null,
+    senderCharacter: profile?.character ?? null,
     amount: amount.toString(),
     claimed: amount === 0n,
     expiry,
@@ -290,16 +291,19 @@ app.get("/api/activity/:address", async (c) => {
 
 // ------------------------------------------------------ profiles and notes
 
+/** The creatures a person can choose (web/public/cast). */
+const CHARACTERS = new Set(["pangolin", "tortoise", "hornbill"]);
+
 app.get("/api/profiles/:address", (c) => {
   const p = store.getProfile(addr(c.req.param("address"), "address"));
   if (!p) throw new HttpError(404, "no profile");
-  return c.json({ address: p.address, handle: p.handle, inboxKey: p.inbox_key });
+  return c.json({ address: p.address, handle: p.handle, inboxKey: p.inbox_key, character: p.character });
 });
 
 app.get("/api/handles/:handle", (c) => {
   const p = store.findHandle(c.req.param("handle"));
   if (!p) throw new HttpError(404, "no such handle");
-  return c.json({ address: p.address, handle: p.handle, inboxKey: p.inbox_key });
+  return c.json({ address: p.address, handle: p.handle, inboxKey: p.inbox_key, character: p.character });
 });
 
 app.put("/api/profiles/:address", async (c) => {
@@ -309,7 +313,8 @@ app.put("/api/profiles/:address", async (c) => {
   const b = JSON.parse(body);
   const handle = typeof b.handle === "string" && /^[a-z0-9_]{3,20}$/i.test(b.handle) ? b.handle : null;
   hex(b.inboxKey, "inboxKey");
-  if (!store.putProfile(who, handle, b.inboxKey)) throw new HttpError(409, "handle taken");
+  const character = CHARACTERS.has(b.character) ? (b.character as string) : null;
+  if (!store.putProfile(who, handle, b.inboxKey, character)) throw new HttpError(409, "handle taken");
   return c.json({ ok: true });
 });
 

@@ -7,7 +7,13 @@ import { api } from "./api.ts";
 import { decryptWith, encryptWith, vaultAad } from "./crypto.ts";
 import type { Session } from "./keys.ts";
 
-export type Contact = { name: string; address: Address; handle?: string | null; inboxKey?: Hex | null };
+export type Contact = {
+  name: string;
+  address: Address;
+  handle?: string | null;
+  inboxKey?: Hex | null;
+  character?: string | null;
+};
 
 export type SentItem = {
   kind: "direct" | "link";
@@ -27,13 +33,15 @@ export type VaultData = {
   v: 1;
   name: string;
   handle: string | null;
+  /** Your creature (web/public/cast). Also published on your profile. */
+  character?: string | null;
   contacts: Contact[];
   sent: SentItem[];
   received: ReceivedItem[];
 };
 
-export function emptyVault(name: string): VaultData {
-  return { v: 1, name, handle: null, contacts: [], sent: [], received: [] };
+export function emptyVault(name: string, character: string | null = null): VaultData {
+  return { v: 1, name, handle: null, character, contacts: [], sent: [], received: [] };
 }
 
 export async function loadVault(session: Session): Promise<{ data: VaultData | null; version: number }> {
