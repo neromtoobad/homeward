@@ -4,7 +4,7 @@ import { fromUnits } from "../../../shared/money.ts";
 import { cadence, ngn, usd, when } from "../lib/format.ts";
 import type { Contact } from "../lib/vault.ts";
 import { useHomeward } from "../state.tsx";
-import { CourierSprite } from "../cast.tsx";
+import { CourierSprite, CreatureAvatar } from "../cast.tsx";
 import { ErrorLine, TopBar, TxLink, errorText } from "./ui.tsx";
 
 const PERIODS = { daily: 86400, weekly: 7 * 86400, monthly: 30 * 86400 } as const;
@@ -67,12 +67,13 @@ export function Schedule() {
   return (
     <section className="schedule">
       <TopBar title="Standing orders" />
-      <div className="stage">
-        <CourierSprite pose="sleep" size={120} />
+      <div className="hero-panel">
+        <CourierSprite pose="sleep" size={112} />
+        <p>
+          Set it once. Homeward sets the money aside now and your courier delivers it on schedule, with the naira rate recorded on
+          each payment.
+        </p>
       </div>
-      <p className="lede">
-        Set it once. Homeward sets the money aside now and releases it on schedule, with the naira rate recorded on each payment.
-      </p>
 
       {done ? (
         <div className="card">
@@ -94,17 +95,17 @@ export function Schedule() {
                     className={`contact ${contact?.address === c.address ? "on" : ""}`}
                     onClick={() => setContact(c)}
                   >
-                    <span className="avatar small">{c.name.replace("@", "").slice(0, 1).toUpperCase()}</span>
+                    <CreatureAvatar kind={c.character} name={c.name} size={28} />
                     {c.name}
                   </button>
                 ))}
               </div>
               <div className="segmented" role="radiogroup">
                 <button className={mode === "fixed" ? "on" : ""} onClick={() => setMode("fixed")}>
-                  Send an amount
+                  Fixed amount
                 </button>
                 <button className={mode === "topup" ? "on" : ""} onClick={() => setMode("topup")}>
-                  Keep them topped up
+                  Top them up
                 </button>
               </div>
               <label className="field">

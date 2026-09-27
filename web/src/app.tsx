@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon } from "./icons.tsx";
 import { passkeyHint } from "./lib/keys.ts";
 import { Add } from "./screens/add.tsx";
 import { Claim } from "./screens/claim.tsx";
@@ -39,14 +40,40 @@ export function App() {
   else if (route === "/add") screen = <Add />;
   else screen = <Home />;
 
+  // The tab bar belongs to the signed-in app; flows (send, claim, sign-up) get the whole screen.
+  const tabs = Boolean(session && vault) && ["/", "/schedule", "/me", "/add"].includes(route);
+
   return (
-    <main className="shell">
+    <main className={`shell ${tabs ? "" : "no-tabs"}`}>
       {screen}
+      {tabs && <TabBar route={route} />}
       {busy && (
         <div className="busy" role="status" aria-live="polite">
           <span className="spinner" aria-hidden /> {busy}…
         </div>
       )}
     </main>
+  );
+}
+
+function TabBar({ route }: { route: Route }) {
+  const items: { to: Route; label: string; icon: keyof typeof Icon }[] = [
+    { to: "/", label: "Home", icon: "home" },
+    { to: "/send", label: "Send", icon: "send" },
+    { to: "/schedule", label: "Schedule", icon: "calendar" },
+    { to: "/me", label: "You", icon: "user" },
+  ];
+  return (
+    <nav className="tabbar" aria-label="Main">
+      {items.map((it) => {
+        const Glyph = Icon[it.icon];
+        return (
+          <button key={it.to} className={route === it.to ? "on" : ""} aria-current={route === it.to ? "page" : undefined} onClick={() => navigate(it.to)}>
+            <Glyph size={22} />
+            {it.label}
+          </button>
+        );
+      })}
+    </nav>
   );
 }

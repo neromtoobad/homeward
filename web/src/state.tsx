@@ -190,6 +190,16 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
       changed = true;
     });
 
+    // Contacts saved before they picked a creature: fill it in from their profile.
+    const missing = data.contacts.filter((c) => !c.character).slice(0, 20);
+    const profiles = await Promise.all(missing.map((c) => api.profile(c.address).catch(() => null)));
+    missing.forEach((c, i) => {
+      const character = profiles[i]?.character;
+      if (!character) return;
+      data = { ...data, contacts: data.contacts.map((x) => (x.address === c.address ? { ...x, character } : x)) };
+      changed = true;
+    });
+
     // Notes other people sealed to this inbox since last time.
     const seen = new Set(data.received.map((r) => r.txHash));
     const notes = await api.notes(s.account).catch(() => []);

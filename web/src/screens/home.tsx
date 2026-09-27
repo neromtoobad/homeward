@@ -4,7 +4,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { fromUnits } from "../../../shared/money.ts";
 import { navigate } from "../app.tsx";
 import { type OrderInfo, type ParsedIntent, api } from "../lib/api.ts";
-import { type Creature, CreatureSprite, type Pose, isCreature } from "../cast.tsx";
+import { type Creature, CreatureAvatar, CreatureSprite, type Pose, isCreature } from "../cast.tsx";
+import { Icon } from "../icons.tsx";
 import { buildActivity } from "../lib/activity.ts";
 import { ago, cadence, ngn, usd, when } from "../lib/format.ts";
 import { useHomeward } from "../state.tsx";
@@ -30,85 +31,155 @@ export function Home() {
   const creature: Creature = isCreature(vault.character) ? vault.character : "pangolin";
   const pose = moodFor(balance, orders, me, arrivedAt);
 
+  const character = (address?: string) =>
+    address ? vault.contacts.find((c) => c.address.toLowerCase() === address.toLowerCase())?.character : undefined;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
     <section className="home">
-      <header className="home-head">
-        <span className="wordmark">Homeward</span>
-        <button className="avatar" onClick={() => navigate("/me")} aria-label="You">
-          {(vault.name || "?").slice(0, 1).toUpperCase()}
+      <header className="app-head">
+        <button className="avatar" onClick={() => navigate("/me")} aria-label="Your profile">
+          <img src={`/cast/${creature}/idle.webp`} alt="" />
         </button>
+        <div className="hello">
+          <span>{greeting}</span>
+          <strong>{vault.name || "there"}</strong>
+        </div>
+        <span className="wordmark">Homeward</span>
       </header>
 
-      <div className="home-hero">
-        <div className="balance">
-          <span className="label">Your dollars</span>
-          <span className="amount display">{dollars === null ? <span className="shimmer" aria-label="Loading balance" /> : usd(dollars)}</span>
-          {rate && dollars !== null && <span className="sub">≈ {ngn(dollars * rate)}</span>}
-        </div>
-        <CreatureSprite kind={creature} pose={pose} size={132} label={`Your ${creature}`} />
+      <div className="balance-card">
+        <span className="label">Your balance</span>
+        <span className="amount">{dollars === null ? <span className="shimmer" aria-label="Loading balance" /> : usd(dollars)}</span>
+        {rate && dollars !== null && <span className="sub">≈ {ngn(dollars * rate)}</span>}
+        {rate && (
+          <div>
+            <span className="chip">
+              <span className="dot-live" aria-hidden />1 USD = {ngn(rate)}
+            </span>
+          </div>
+        )}
+        <CreatureSprite kind={creature} pose={pose} size={124} label={`Your ${creature}`} />
       </div>
 
-      <div className="actions">
-        <button className="primary" onClick={() => navigate("/send")}>
+      <div className="quick">
+        <button onClick={() => navigate("/send")}>
+          <span className="disc">
+            <Icon.send />
+          </span>
           Send
         </button>
-        <button className="secondary" onClick={() => navigate("/add")}>
+        <button onClick={() => navigate("/send?link=1")}>
+          <span className="disc">
+            <Icon.link />
+          </span>
+          Link
+        </button>
+        <button onClick={() => navigate("/add")}>
+          <span className="disc">
+            <Icon.plus />
+          </span>
           Add money
         </button>
-        <button className="secondary" onClick={() => navigate("/schedule")}>
+        <button onClick={() => navigate("/schedule")}>
+          <span className="disc">
+            <Icon.calendar />
+          </span>
           Schedule
         </button>
       </div>
 
       {config?.kimi && <Ask />}
 
-      {outgoing.length > 0 && (
-        <div className="card">
-          <h3>Standing orders</h3>
-          {outgoing.map((o) => (
-            <div key={o.id} className="row">
-              <span>
-                {o.mode === "topup" ? `Keep at ${usd(o.amount)}` : usd(o.amount)} {cadence(o.period)}
-              </span>
-              <span className="muted">next {when(o.nextDue)}</span>
-            </div>
-          ))}
-        </div>
+      {vault.contacts.length > 0 && (
+        <>
+          <div className="section-head">
+            <h3>Send again</h3>
+          </div>
+          <div className="people">
+            {vault.contacts.slice(0, 10).map((c) => (
+              <button key={c.address} onClick={() => navigate(`/send?to=${encodeURIComponent(c.name)}`)}>
+                <CreatureAvatar kind={c.character} name={c.name} />
+                <span>{c.name.replace(/^@/, "")}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="card">
-        <h3>Activity</h3>
-        {activity.length === 0 && <p className="muted">Nothing yet. Send someone a few dollars and it shows up here.</p>}
-        {activity.map((a) => (
-          <div key={a.key}>
-            <button className="row activity" onClick={() => setOpen(open === a.key ? null : a.key)} aria-expanded={open === a.key}>
-              <span className={`dot ${a.dir}`} aria-hidden />
-              <span className="who">
-                {a.label}
-                {a.note && <small>“{a.note}”</small>}
-                {a.ngn && (
-                  <small>
-                    ≈ {ngn(a.ngn.value)} at {ngn(a.ngn.rate)}/$
-                  </small>
-                )}
-              </span>
-              <span className={`amt ${a.dir}`}>
-                {a.dir === "in" ? "+" : "−"}
-                {usd(a.amount)}
-                <small>{ago(a.at)}</small>
-              </span>
+      {outgoing.length > 0 && (
+        <>
+          <div className="section-head">
+            <h3>Standing orders</h3>
+            <button className="link-button" onClick={() => navigate("/schedule")}>
+              Manage
             </button>
-            {open === a.key &&
-              (a.sent?.kind === "link" && a.sent.claimSecret ? (
-                <LinkDetail item={a.sent} />
-              ) : (
-                <div className="detail">
-                  <TxLink hash={a.txHash} explorer={config?.explorer} />
-                </div>
-              ))}
           </div>
-        ))}
+          <div className="card">
+            {outgoing.map((o) => (
+              <div key={o.id} className="row">
+                <span>
+                  {o.mode === "topup" ? `Keep at ${usd(o.amount)}` : usd(o.amount)} {cadence(o.period)}
+                </span>
+                <span className="muted small">next {when(o.nextDue)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="section-head">
+        <h3>Activity</h3>
       </div>
+      {activity.length === 0 ? (
+        <p className="empty">Nothing yet. Send someone a few dollars and it shows up here.</p>
+      ) : (
+        <div className="list">
+          {activity.map((a) => {
+            const kind = character(a.other);
+            return (
+              <div key={a.key}>
+                <button className="row activity" onClick={() => setOpen(open === a.key ? null : a.key)} aria-expanded={open === a.key}>
+                  <span className={`glyph ${a.dir}`} aria-hidden>
+                    {isCreature(kind) ? (
+                      <img src={`/cast/${kind}/idle.webp`} alt="" className="glyph-img" />
+                    ) : a.dir === "in" ? (
+                      <Icon.receive size={20} />
+                    ) : a.sent?.kind === "link" ? (
+                      <Icon.link size={20} />
+                    ) : (
+                      <Icon.send size={20} />
+                    )}
+                  </span>
+                  <span className="who">
+                    {a.label}
+                    {a.note ? <small>“{a.note}”</small> : <small>{ago(a.at)}</small>}
+                    {a.ngn && (
+                      <small>
+                        ≈ {ngn(a.ngn.value)} at {ngn(a.ngn.rate)}/$
+                      </small>
+                    )}
+                  </span>
+                  <span className={`amt ${a.dir}`}>
+                    {a.dir === "in" ? "+" : "−"}
+                    {usd(a.amount)}
+                    {a.note && <small>{ago(a.at)}</small>}
+                  </span>
+                </button>
+                {open === a.key &&
+                  (a.sent?.kind === "link" && a.sent.claimSecret ? (
+                    <LinkDetail item={a.sent} />
+                  ) : (
+                    <div className="detail">
+                      <TxLink hash={a.txHash} explorer={config?.explorer} />
+                    </div>
+                  ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

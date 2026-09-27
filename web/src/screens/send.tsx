@@ -3,11 +3,12 @@ import type { Hex } from "viem";
 import { fromUnits } from "../../../shared/money.ts";
 import { navigate } from "../app.tsx";
 import { api } from "../lib/api.ts";
-import { ngn, seconds, usd } from "../lib/format.ts";
+import { ngn, seconds, short, usd } from "../lib/format.ts";
 import { PROMPT_FREE_LIMIT_USD } from "../lib/keys.ts";
 import type { Contact } from "../lib/vault.ts";
 import { useHomeward } from "../state.tsx";
-import { type Creature, Delivery, isCreature } from "../cast.tsx";
+import { type Creature, CreatureAvatar, Delivery, isCreature } from "../cast.tsx";
+import { Icon } from "../icons.tsx";
 import { ErrorLine, TopBar, TxLink, errorText } from "./ui.tsx";
 
 type Target = { kind: "contact"; contact: Contact } | { kind: "link"; label: string };
@@ -21,7 +22,8 @@ export function Send() {
   const [target, setTarget] = useState<Target | null>(() => {
     const to = params.get("to")?.toLowerCase();
     const c = vault?.contacts.find((x) => x.name.toLowerCase() === to);
-    return c ? { kind: "contact", contact: c } : null;
+    if (c) return { kind: "contact", contact: c };
+    return params.get("link") ? { kind: "link", label: "" } : null;
   });
   const [lookup, setLookup] = useState(params.get("to") ?? "");
   const [linkLabel, setLinkLabel] = useState(params.get("to") ?? "");
@@ -33,7 +35,8 @@ export function Send() {
   if (!vault) return null;
   const n = Number(amount);
   const usdAmount = currency === "USD" ? n : rate ? n / rate : 0;
-  const valid = usdAmount >= 0.01 && (balance === null || usdAmount <= fromUnits(balance));
+  const tooMuch = balance !== null && usdAmount > fromUnits(balance);
+  const valid = usdAmount >= 0.01 && !tooMuch;
 
   async function find() {
     setError(null);
@@ -78,86 +81,149 @@ export function Send() {
     );
   }
 
+  const recipientName =
+    target?.kind === "contact" ? target.contact.name.replace(/^@/, "") : target?.kind === "link" ? target.label || "They" : "They";
+  const ngnValue = rate ? usdAmount * rate : null;
+
   return (
     <section className="send">
-      <TopBar title="Send" />
+      <TopBar title="Send money" />
 
-      <div className="amount-entry">
-        <div className="amount-input">
-          <span className="currency">{currency === "USD" ? "$" : "₦"}</span>
-          <input
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
-            placeholder="0"
-            aria-label="Amount"
-            className="display"
-            style={{ width: `${Math.max(1, amount.length) + 0.3}ch` }}
-          />
-        </div>
-        <button
-          className="chip"
-          onClick={() => {
-            if (!rate) return;
-            if (n) setAmount(currency === "USD" ? String(Math.round(n * rate)) : (n / rate).toFixed(2));
-            setCurrency(currency === "USD" ? "NGN" : "USD");
-          }}
-        >
-          {currency === "USD"
-            ? rate && n
-              ? `≈ ${ngn(n * rate)} · switch to ₦`
-              : "Switch to ₦"
-            : `≈ ${usd(usdAmount)} · switch to $`}
-        </button>
-        {balance !== null && <p className="muted small">You have {usd(balance)}</p>}
-      </div>
-
-      <div className="card">
-        <h3>To</h3>
-        {target ? (
-          <div className="row">
-            <span>{target.kind === "contact" ? target.contact.name : `A link${target.label ? ` for ${target.label}` : ""}`}</span>
-            <button className="ghost small" onClick={() => setTarget(null)}>
-              Change
+      <div className="converter">
+        <div className="leg">
+          <label htmlFor="amount">You send</label>
+          <div className="leg-row">
+            <input
+              id="amount"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+              placeholder="0"
+              aria-label="Amount"
+              autoFocus
+            />
+            <span className="ccy">
+              <span className="flag">{currency === "USD" ? "$" : "₦"}</span>
+              {currency}
+            </span>
+          </div>
+          <div className="leg-sub">
+            {balance !== null && <span className={tooMuch ? "over" : undefined}>Balance {usd(balance)} · </span>}
+            <button
+              className="link-button"
+              type="button"
+              disabled={!rate}
+              onClick={() => {
+                if (!rate) return;
+                if (n) setAmount(currency === "USD" ? String(Math.round(n * rate)) : (n / rate).toFixed(2));
+                setCurrency(currency === "USD" ? "NGN" : "USD");
+              }}
+            >
+              {currency === "USD" ? "Enter in naira" : "Enter in dollars"}
             </button>
           </div>
-        ) : (
-          <>
-            {vault.contacts.length > 0 && (
-              <div className="contacts">
-                {vault.contacts.map((c) => (
-                  <button key={c.address} className="contact" onClick={() => setTarget({ kind: "contact", contact: c })}>
-                    <span className="avatar small">{c.name.replace("@", "").slice(0, 1).toUpperCase()}</span>
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="inline">
-              <input value={lookup} onChange={(e) => setLookup(e.target.value)} placeholder="@name or 0x address" />
-              <button className="secondary small" disabled={!lookup.trim()} onClick={find}>
-                Find
-              </button>
-            </div>
-            <div className="or">or, for someone new</div>
-            <div className="inline">
-              <input value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} placeholder="Who is it for? (e.g. Mum)" />
-              <button className="secondary small" onClick={() => setTarget({ kind: "link", label: linkLabel.trim() })}>
-                Make a link
-              </button>
-            </div>
-          </>
-        )}
+        </div>
+
+        <div className="rail">
+          <span className="chip">
+            <span className="dot-live" aria-hidden />
+            {rate ? <>1 USD = {ngn(rate)} · live rate</> : "Getting today's rate…"}
+          </span>
+        </div>
+
+        <div className="leg">
+          <span className="leg-label">{recipientName} gets</span>
+          <div className="leg-row">
+            <span className="leg-value">{valid || n ? usd(usdAmount).replace("$", "") : "0"}</span>
+            <span className="ccy">
+              <span className="flag">$</span>
+              USD
+            </span>
+          </div>
+          <div className="leg-sub">{ngnValue ? <>Worth {ngn(ngnValue)} in naira today</> : "Real dollars, held as AUSD"}</div>
+        </div>
+
+        <div className="facts">
+          <div>
+            <span>Fee</span>
+            <strong className="free">$0.00</strong>
+          </div>
+          <div>
+            <span>Arrives</span>
+            <strong>In about a second</strong>
+          </div>
+          <div>
+            <span>Total</span>
+            <strong>{usd(usdAmount || 0)}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="section-head">
+        <h3>Who's it for?</h3>
+      </div>
+      <div className="recipients" role="radiogroup">
+        {vault.contacts.map((c) => {
+          const on = target?.kind === "contact" && target.contact.address === c.address;
+          return (
+            <button key={c.address} role="radio" aria-checked={on} className={`recipient ${on ? "on" : ""}`} onClick={() => setTarget({ kind: "contact", contact: c })}>
+              <CreatureAvatar kind={c.character} name={c.name} />
+              <span>
+                {c.name}
+                <small>{c.handle ? `@${c.handle}` : short(c.address)}</small>
+              </span>
+              {on && <span className="tick">✓</span>}
+            </button>
+          );
+        })}
+        <button
+          role="radio"
+          aria-checked={target?.kind === "link"}
+          className={`recipient ${target?.kind === "link" ? "on" : ""}`}
+          onClick={() => setTarget({ kind: "link", label: linkLabel.trim() })}
+        >
+          <span className="avatar">
+            <Icon.link size={20} />
+          </span>
+          <span>
+            Someone new
+            <small>Send a link. They sign up with one tap.</small>
+          </span>
+          {target?.kind === "link" && <span className="tick">✓</span>}
+        </button>
+      </div>
+
+      {target?.kind === "link" && (
+        <label className="field">
+          <span>Who is the link for?</span>
+          <input
+            value={linkLabel}
+            onChange={(e) => {
+              setLinkLabel(e.target.value);
+              setTarget({ kind: "link", label: e.target.value.trim() });
+            }}
+            placeholder="Mum"
+            maxLength={40}
+          />
+        </label>
+      )}
+
+      <div className="or">or find someone on Homeward</div>
+      <div className="inline">
+        <input value={lookup} onChange={(e) => setLookup(e.target.value)} placeholder="@name or 0x address" aria-label="Find by name or address" />
+        <button className="secondary small" disabled={!lookup.trim()} onClick={find}>
+          Find
+        </button>
       </div>
 
       <label className="field">
-        <span>Note (only they can read it)</span>
+        <span>Add a note (only they can read it)</span>
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="For school fees" maxLength={140} />
       </label>
 
       <ErrorLine error={error} />
       <button className="primary big" disabled={!valid || !target || Boolean(busy)} onClick={submit}>
-        {target?.kind === "link" ? "Make link for" : "Send"} {valid ? usd(usdAmount) : ""}
+        {tooMuch ? "Not enough balance" : !valid ? "Enter an amount" : target?.kind === "link" ? `Create link for ${usd(usdAmount)}` : target ? `Send ${usd(usdAmount)} to ${recipientName}` : `Send ${usd(usdAmount)}`}
       </button>
       {usdAmount > PROMPT_FREE_LIMIT_USD && <p className="muted small center">Over {usd(PROMPT_FREE_LIMIT_USD)} asks for your passkey again.</p>}
     </section>
@@ -177,6 +243,7 @@ function Done({
   amount: number;
   explorer?: string;
 }) {
+  const { rate } = useHomeward();
   const url = done?.url;
   const message = `I sent you ${usd(amount)} on Homeward. Tap to receive it: ${url}`;
   return (
@@ -212,9 +279,37 @@ function Done({
           {usd(amount)} arrived. Confirmed on Monad in {seconds(done.ms)}.
         </p>
       )}
-      {done && <TxLink hash={done.hash} explorer={explorer} />}
       {done && (
-        <button className="ghost" onClick={() => navigate("/")}>
+        <div className="card receipt">
+          <div className="row">
+            <span>To</span>
+            <strong>{flight.name}</strong>
+          </div>
+          <div className="row">
+            <span>{url ? "Held for them" : "They got"}</span>
+            <strong>{usd(amount)}</strong>
+          </div>
+          {rate && (
+            <div className="row">
+              <span>Worth in naira</span>
+              <strong>{ngn(amount * rate)}</strong>
+            </div>
+          )}
+          <div className="row">
+            <span>Fee</span>
+            <strong className="free">$0.00</strong>
+          </div>
+          <div className="row">
+            <span>Confirmed in</span>
+            <strong>{seconds(done.ms)}</strong>
+          </div>
+          <div className="row">
+            <TxLink hash={done.hash} explorer={explorer} />
+          </div>
+        </div>
+      )}
+      {done && (
+        <button className={url ? "ghost" : "primary big"} onClick={() => navigate("/")}>
           Done
         </button>
       )}

@@ -34,9 +34,12 @@ export function Welcome({ returning }: { returning: boolean }) {
         <br />
         in one tap.
       </h1>
-      <p className="lede">
-        Money lands in seconds, as real dollars. No bank, no app to learn, no seed phrase. Your face or fingerprint is the key.
-      </p>
+      <p className="lede">Real dollars to family abroad, in about a second. Your face or fingerprint is the only key you need.</p>
+      <div className="trust">
+        <span>No fees</span>
+        <span>Arrives in seconds</span>
+        <span>No seed phrase</span>
+      </div>
 
       {mode === "create" ? (
         <form

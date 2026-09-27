@@ -161,3 +161,13 @@ export function CreaturePicker({ value, onChange }: { value: Creature | null; on
     </div>
   );
 }
+
+/** A round avatar: the person's creature if they have one, else their initial. */
+export function CreatureAvatar({ kind, name, size }: { kind?: string | null; name: string; size?: number }) {
+  const style = size ? { width: size, height: size } : undefined;
+  return (
+    <span className="avatar" style={style} aria-hidden>
+      {isCreature(kind) ? <img src={`/cast/${kind}/idle.webp`} alt="" /> : name.replace("@", "").slice(0, 1).toUpperCase()}
+    </span>
+  );
+}

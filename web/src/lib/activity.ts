@@ -17,6 +17,8 @@ export type ActivityRow = {
   ngn?: { value: number; rate: number };
   txHash: Hex;
   sent?: SentItem;
+  /** The other person, when known, so their creature can be shown. */
+  other?: Address;
 };
 
 function nameFor(vault: VaultData, address: Address) {
@@ -35,6 +37,7 @@ export function buildActivity(vault: VaultData, me: Address, payments: IndexedPa
       note: s.note,
       txHash: s.txHash,
       sent: s,
+      other: s.toAddress,
     })),
     ...vault.received.map((r) => ({
       key: r.txHash,
@@ -44,6 +47,7 @@ export function buildActivity(vault: VaultData, me: Address, payments: IndexedPa
       amount: r.amount,
       note: r.note,
       txHash: r.txHash,
+      other: r.fromAddress,
     })),
   ];
   if (!payments) return fromVault.sort((a, b) => b.at - a.at);
@@ -69,6 +73,7 @@ export function buildActivity(vault: VaultData, me: Address, payments: IndexedPa
       ngn: p.ngnValue && p.ngnPerUsd ? { value: Number(p.ngnValue) / 1e6, rate: Number(p.ngnPerUsd) / 1e6 } : undefined,
       txHash: p.txHash,
       sent,
+      other,
     };
   });
 

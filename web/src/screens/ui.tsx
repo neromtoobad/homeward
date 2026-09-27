@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { navigate } from "../app.tsx";
+import { Icon } from "../icons.tsx";
 import { ApiError } from "../lib/api.ts";
 
 export function errorText(e: unknown): string {
@@ -24,9 +25,7 @@ export function TopBar({ title, back = "/" }: { title: string; back?: string }) 
   return (
     <header className="topbar">
       <button className="icon" onClick={() => navigate(back)} aria-label="Back">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden>
-          <path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
+        <Icon.back />
       </button>
       <h2>{title}</h2>
       <span className="icon" />
