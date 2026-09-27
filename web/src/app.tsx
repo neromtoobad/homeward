@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { passkeyHint } from "./lib/keys.ts";
+import { Add } from "./screens/add.tsx";
 import { Claim } from "./screens/claim.tsx";
 import { Home } from "./screens/home.tsx";
 import { Me } from "./screens/me.tsx";
@@ -8,7 +9,7 @@ import { Send } from "./screens/send.tsx";
 import { Welcome } from "./screens/welcome.tsx";
 import { useHomeward } from "./state.tsx";
 
-export type Route = "/" | "/send" | "/schedule" | "/me" | "/c";
+export type Route = "/" | "/send" | "/schedule" | "/me" | "/add" | "/c";
 
 export function navigate(to: string) {
   history.pushState(null, "", to);
@@ -22,7 +23,7 @@ function useRoute(): Route {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
-  return (["/send", "/schedule", "/me", "/c"].includes(path) ? path : "/") as Route;
+  return (["/send", "/schedule", "/me", "/add", "/c"].includes(path) ? path : "/") as Route;
 }
 
 export function App() {
@@ -35,6 +36,7 @@ export function App() {
   else if (route === "/send") screen = <Send />;
   else if (route === "/schedule") screen = <Schedule />;
   else if (route === "/me") screen = <Me />;
+  else if (route === "/add") screen = <Add />;
   else screen = <Home />;
 
   return (

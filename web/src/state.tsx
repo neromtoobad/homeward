@@ -44,9 +44,9 @@ type Actions = {
   lock(): void;
   refresh(): Promise<void>;
   updateVault(fn: (v: VaultData) => VaultData): Promise<void>;
-  sendTo(contact: Contact, amountUsd: number, note: string): Promise<Hex>;
-  makeLink(amountUsd: number, note: string, label: string): Promise<{ url: string; hash: Hex }>;
-  claim(claimSecret: Hex, fromName: string, note: string | undefined): Promise<Hex>;
+  sendTo(contact: Contact, amountUsd: number, note: string): Promise<Settled>;
+  makeLink(amountUsd: number, note: string, label: string): Promise<Settled & { url: string }>;
+  claim(claimSecret: Hex, fromName: string, note: string | undefined): Promise<Settled>;
   cancelLink(claimSecret: Hex): Promise<Hex>;
   schedule(o: {
     contact: Contact;
@@ -60,6 +60,9 @@ type Actions = {
   setHandle(handle: string): Promise<void>;
   resolveRecipient(input: string): Promise<Contact>;
 };
+
+/** A confirmed transaction and how long it took from tap to confirmation. */
+export type Settled = { hash: Hex; ms: number };
 
 const HomewardContext = createContext<(State & Actions) | null>(null);
 
@@ -292,7 +295,9 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
           : undefined;
         // The note's hash rides onchain as the payment's ref.
         const signed = await signSend(session.account, ctx(), contact.address, value, sealedNote ? keccak256(toBytes(sealedNote)) : undefined);
+        const started = performance.now();
         const { hash } = await api.send({ ...signed, sealedNote });
+        const ms = performance.now() - started;
         await updateVault((v) =>
           upsertContact(
             {
@@ -306,7 +311,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
           ),
         );
         await refresh();
-        return hash;
+        return { hash, ms };
       }),
     [session, vault, ctx, stepUp, updateVault, refresh, withBusy],
   );
@@ -325,7 +330,9 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
           claimSecret,
           JSON.stringify({ from: vault.handle ? `@${vault.handle}` : vault.name, note }),
         );
+        const started = performance.now();
         const { hash } = await api.createLink({ ...signed, sealedNote });
+        const ms = performance.now() - started;
         await updateVault((v) => ({
           ...v,
           sent: [
@@ -344,7 +351,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
         }));
         await refresh();
         // The secret rides in the fragment, which browsers never send to a server.
-        return { url: `${location.origin}/c#${claimSecret.slice(2)}`, hash };
+        return { url: `${location.origin}/c#${claimSecret.slice(2)}`, hash, ms };
       }),
     [session, vault, ctx, stepUp, updateVault, refresh, withBusy],
   );
@@ -356,7 +363,9 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
         const claimAccount = privateKeyToAccount(claimSecret);
         const info = await api.link(claimAccount.address);
         const signed = await signClaim(claimAccount, ctx(), session.account.address);
+        const started = performance.now();
         const { hash } = await api.claim(signed);
+        const ms = performance.now() - started;
         await updateVault((v) => {
           let next: VaultData = {
             ...v,
@@ -372,7 +381,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
           return next;
         });
         await refresh();
-        return hash;
+        return { hash, ms };
       }),
     [session, ctx, updateVault, refresh, withBusy],
   );

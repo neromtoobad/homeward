@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { Hex } from "viem";
 import { fromUnits } from "../../../shared/money.ts";
 import { navigate } from "../app.tsx";
-import { ngn, usd } from "../lib/format.ts";
+import { ngn, seconds, usd } from "../lib/format.ts";
 import { PROMPT_FREE_LIMIT_USD } from "../lib/keys.ts";
 import type { Contact } from "../lib/vault.ts";
 import { useHomeward } from "../state.tsx";
@@ -24,7 +24,7 @@ export function Send() {
   const [lookup, setLookup] = useState(params.get("to") ?? "");
   const [linkLabel, setLinkLabel] = useState(params.get("to") ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ hash: Hex; url?: string } | null>(null);
+  const [done, setDone] = useState<{ hash: Hex; ms: number; url?: string } | null>(null);
 
   if (!vault) return null;
   const n = Number(amount);
@@ -46,14 +46,14 @@ export function Send() {
     setError(null);
     try {
       const rounded = Math.round(usdAmount * 100) / 100;
-      if (target.kind === "contact") setDone({ hash: await sendTo(target.contact, rounded, note) });
+      if (target.kind === "contact") setDone(await sendTo(target.contact, rounded, note));
       else setDone(await makeLink(rounded, note, target.label));
     } catch (e) {
       setError(errorText(e));
     }
   }
 
-  if (done) return <Done hash={done.hash} url={done.url} amount={usdAmount} explorer={config?.explorer} />;
+  if (done) return <Done hash={done.hash} ms={done.ms} url={done.url} amount={usdAmount} explorer={config?.explorer} />;
 
   return (
     <section className="send">
@@ -141,7 +141,7 @@ export function Send() {
   );
 }
 
-function Done({ hash, url, amount, explorer }: { hash: Hex; url?: string; amount: number; explorer?: string }) {
+function Done({ hash, ms, url, amount, explorer }: { hash: Hex; ms: number; url?: string; amount: number; explorer?: string }) {
   const message = `I sent you ${usd(amount)} on Homeward. Tap to receive it: ${url}`;
   return (
     <section className="done">
@@ -167,7 +167,9 @@ function Done({ hash, url, amount, explorer }: { hash: Hex; url?: string; amount
           </div>
         </>
       ) : (
-        <p className="lede">{usd(amount)} arrived. It settled on Monad in under a second.</p>
+        <p className="lede">
+          {usd(amount)} arrived. Confirmed on Monad in {seconds(ms)}.
+        </p>
       )}
       <TxLink hash={hash} explorer={explorer} />
       <button className="ghost" onClick={() => navigate("/")}>

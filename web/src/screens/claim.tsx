@@ -5,8 +5,8 @@ import { fromUnits } from "../../../shared/money.ts";
 import { navigate } from "../app.tsx";
 import { type LinkInfo, api } from "../lib/api.ts";
 import { openFromLink } from "../lib/crypto.ts";
-import { ngn, short, usd } from "../lib/format.ts";
-import { useHomeward } from "../state.tsx";
+import { ngn, seconds, short, usd } from "../lib/format.ts";
+import { type Settled, useHomeward } from "../state.tsx";
 import { HouseMark } from "./welcome.tsx";
 import { ErrorLine, TxLink, errorText } from "./ui.tsx";
 
@@ -22,7 +22,7 @@ export function Claim() {
   const [message, setMessage] = useState<{ from: string; note: string } | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [hash, setHash] = useState<Hex | null>(null);
+  const [done, setDone] = useState<Settled | null>(null);
   const wantsClaim = useRef(false);
 
   useEffect(() => {
@@ -41,15 +41,15 @@ export function Claim() {
 
   // After a new account is created (or an old one unlocked), finish the claim.
   useEffect(() => {
-    if (!wantsClaim.current || !session || !vault || !secret || hash) return;
+    if (!wantsClaim.current || !session || !vault || !secret || done) return;
     wantsClaim.current = false;
     claim(secret, from, message?.note || undefined)
-      .then((h) => {
-        setHash(h);
+      .then((settled) => {
+        setDone(settled);
         history.replaceState(null, "", "/c");
       })
       .catch((e) => setError(errorText(e)));
-  }, [session, vault, secret, hash, claim, from, message]);
+  }, [session, vault, secret, done, claim, from, message]);
 
   async function receive(fn?: () => Promise<void>) {
     setError(null);
@@ -58,7 +58,7 @@ export function Claim() {
       if (fn) await fn();
       else if (session && vault && secret) {
         wantsClaim.current = false;
-        setHash(await claim(secret, from, message?.note || undefined));
+        setDone(await claim(secret, from, message?.note || undefined));
         history.replaceState(null, "", "/c");
       }
     } catch (e) {
@@ -69,15 +69,18 @@ export function Claim() {
 
   const dollars = info ? fromUnits(info.amount) : 0;
 
-  if (hash) {
+  if (done) {
     return (
       <section className="done">
         <div className="check" aria-hidden>
           ✓
         </div>
         <h2 className="display">{usd(dollars)} is yours</h2>
-        <p className="lede">It's in your Homeward as real dollars. Keep it, send it on, or cash it out when you're ready.</p>
-        <TxLink hash={hash} explorer={config?.explorer} />
+        <p className="lede">
+          It's in your Homeward as real dollars, confirmed on Monad in {seconds(done.ms)}. Keep it, send it on, or cash it out when
+          you're ready.
+        </p>
+        <TxLink hash={done.hash} explorer={config?.explorer} />
         <button className="primary" onClick={() => navigate("/")}>
           See my Homeward
         </button>

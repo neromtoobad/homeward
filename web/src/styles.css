@@ -192,6 +192,23 @@ button.small,
 a.small {
   padding: 9px 14px;
   font-size: 14px;
+  white-space: nowrap;
+}
+
+.shimmer {
+  display: inline-block;
+  width: 5.5ch;
+  height: 0.8em;
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--line), var(--card), var(--line));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
 }
 
 .chip {
@@ -571,6 +588,30 @@ button.row {
   font-size: 14px;
 }
 
+/* -------------------------------------------------------------------- add */
+
+.qr {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 12px;
+  width: min(260px, 70vw);
+  margin: 8px auto 12px;
+}
+
+.qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.address {
+  text-align: center;
+  font-size: 13px;
+  word-break: break-all;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
 /* --------------------------------------------------------------------- me */
 
 .policy {
@@ -626,6 +667,9 @@ button.row {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+  }
   .spinner {
     animation-duration: 2s;
   }

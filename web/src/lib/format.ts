@@ -34,3 +34,7 @@ export function cadence(period: number) {
   if (period >= 28 * 86400 && period <= 31 * 86400) return "every month";
   return `every ${Math.round(period / 86400)} days`;
 }
+
+export function seconds(ms: number) {
+  return `${(ms / 1000).toFixed(1)}s`;
+}

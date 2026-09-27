@@ -12,7 +12,6 @@ import { ErrorLine, TxLink, errorText } from "./ui.tsx";
 
 export function Home() {
   const { vault, balance, rate, orders, config, session, payments } = useHomeward();
-  const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   if (!vault || !session) return null;
   const dollars = balance === null ? null : fromUnits(balance);
@@ -32,7 +31,7 @@ export function Home() {
 
       <div className="balance">
         <span className="label">Your dollars</span>
-        <span className="amount display">{dollars === null ? "—" : usd(dollars)}</span>
+        <span className="amount display">{dollars === null ? <span className="shimmer" aria-label="Loading balance" /> : usd(dollars)}</span>
         {rate && dollars !== null && <span className="sub">≈ {ngn(dollars * rate)}</span>}
       </div>
 
@@ -40,15 +39,8 @@ export function Home() {
         <button className="primary" onClick={() => navigate("/send")}>
           Send
         </button>
-        <button
-          className="secondary"
-          onClick={async () => {
-            await navigator.clipboard?.writeText(session.account.address).catch(() => {});
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-        >
-          {copied ? "Address copied" : "Add money"}
+        <button className="secondary" onClick={() => navigate("/add")}>
+          Add money
         </button>
         <button className="secondary" onClick={() => navigate("/schedule")}>
           Schedule
