@@ -58,6 +58,7 @@ export function Me() {
       <div className="card">
         <h3>How your passkey protects you</h3>
         <ul className="policy">
+          <li>Homeward can't move your money. Every payment needs a signature only your passkey can make.</li>
           <li>Sends up to {usd(PROMPT_FREE_LIMIT_USD)} go through while Homeward is open. Anything larger asks for your passkey again.</li>
           <li>Homeward locks itself after {IDLE_LIMIT_MS / 60000} minutes idle, or {HIDDEN_LIMIT_MS / 60000} minutes in the background.</li>
           <li>Your keys are never stored, not on this phone and not on our servers. Each unlock rebuilds them from your passkey.</li>
@@ -68,7 +69,8 @@ export function Me() {
       <div className="card">
         <h3>Take your money anywhere</h3>
         <p className="muted small">
-          Your Homeward is a standard wallet. The recovery phrase opens it in MetaMask or any other wallet. Keep it secret.
+          Your Homeward is a standard wallet we never control. If Homeward shut down tomorrow, this phrase would open your money in
+          MetaMask or any other wallet. Keep it secret.
         </p>
         {phrase ? (
           <p className="phrase mono">{phrase}</p>

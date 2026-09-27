@@ -68,4 +68,10 @@ export const Icon = {
       <path d="M5 12h14M13 6l6 6-6 6" />
     </Svg>
   ),
+  lock: (p: { size?: number }) => (
+    <Svg {...p}>
+      <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
+      <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" />
+    </Svg>
+  ),
 };

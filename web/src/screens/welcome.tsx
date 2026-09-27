@@ -36,9 +36,9 @@ export function Welcome({ returning }: { returning: boolean }) {
       </h1>
       <p className="lede">Real dollars to family abroad, in about a second. Your face or fingerprint is the only key you need.</p>
       <div className="trust">
-        <span>No fees</span>
-        <span>Arrives in seconds</span>
-        <span>No seed phrase</span>
+        <span>You hold your money</span>
+        <span>Family keeps dollars</span>
+        <span>No bank needed to receive</span>
       </div>
 
       {mode === "create" ? (
@@ -80,10 +80,41 @@ export function Welcome({ returning }: { returning: boolean }) {
         </div>
       )}
       <ErrorLine error={error} />
+      {mode === "start" && <Compare />}
       <p className="fineprint">
         Homeward sends Agora dollars (AUSD) on Monad. Your passkey stays on your phone, and we never hold your money.
       </p>
     </section>
+  );
+}
+
+/** What changes when the money never leaves your own account. Kept to claims the contracts back up. */
+const DIFFERENCES = [
+  ["Who holds the money", "The company", "You do"],
+  ["Family receives", "Naira, at the app's rate", "Dollars they keep"],
+  ["To receive, they need", "A bank account", "Just a phone"],
+  ["If the company closes", "Wait for a refund", "Open it in any wallet"],
+] as const;
+
+function Compare() {
+  return (
+    <div className="compare" role="table" aria-label="How Homeward is different">
+      <h3>How it's different</h3>
+      <div className="compare-row head" role="row">
+        <span role="columnheader" />
+        <span role="columnheader">Most money apps</span>
+        <span role="columnheader">Homeward</span>
+      </div>
+      {DIFFERENCES.map(([what, them, us]) => (
+        <div className="compare-row" role="row" key={what}>
+          <span role="rowheader">{what}</span>
+          <span role="cell" className="them">
+            {them}
+          </span>
+          <strong role="cell">{us}</strong>
+        </div>
+      ))}
+    </div>
   );
 }
 

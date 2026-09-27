@@ -1325,3 +1325,104 @@ button.row {
 .receipt .row .free {
   color: var(--green);
 }
+
+/* ------------------------------------------------ who holds the money */
+
+.assure {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.assure svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.converter .assure {
+  margin: 2px 0 0;
+  border-radius: 22px;
+  padding: 12px 16px;
+}
+
+.balance-card .own {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  max-width: calc(100% - 118px);
+  padding: 0;
+  background: none;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.claim .trust {
+  margin: 4px 0 0;
+}
+
+.compare {
+  margin: 24px 0 0;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 16px 6px;
+}
+
+.compare h3 {
+  margin: 0 0 4px;
+}
+
+.compare-row {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+
+.compare-row > :first-child {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.compare-row .them {
+  color: var(--muted);
+}
+
+.compare-row strong {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.compare-row.head {
+  border-top: 0;
+  padding: 6px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.compare-row.head > :last-child {
+  color: var(--brand);
+}
+
+/* Flex columns already space their children. */
+.done .assure {
+  margin: 0;
+}
+
+.lede + .assure {
+  margin-top: -10px;
+}

@@ -9,7 +9,7 @@ import type { Contact } from "../lib/vault.ts";
 import { useHomeward } from "../state.tsx";
 import { type Creature, CreatureAvatar, Delivery, isCreature } from "../cast.tsx";
 import { Icon } from "../icons.tsx";
-import { ErrorLine, TopBar, TxLink, errorText } from "./ui.tsx";
+import { Assure, ErrorLine, TopBar, TxLink, errorText } from "./ui.tsx";
 
 type Target = { kind: "contact"; contact: Contact } | { kind: "link"; label: string };
 
@@ -23,7 +23,7 @@ export function Send() {
     const to = params.get("to")?.toLowerCase();
     const c = vault?.contacts.find((x) => x.name.toLowerCase() === to);
     if (c) return { kind: "contact", contact: c };
-    return params.get("link") ? { kind: "link", label: "" } : null;
+    return params.get("link") ? { kind: "link", label: params.get("to")?.trim() ?? "" } : null;
   });
   const [lookup, setLookup] = useState(params.get("to") ?? "");
   const [linkLabel, setLinkLabel] = useState(params.get("to") ?? "");
@@ -140,7 +140,7 @@ export function Send() {
               USD
             </span>
           </div>
-          <div className="leg-sub">{ngnValue ? <>Worth {ngn(ngnValue)} in naira today</> : "Real dollars, held as AUSD"}</div>
+          <div className="leg-sub">{ngnValue ? <>Stays in dollars · worth {ngn(ngnValue)} today</> : "Stays in dollars, not converted to naira"}</div>
         </div>
 
         <div className="facts">
@@ -157,6 +157,11 @@ export function Send() {
             <strong>{usd(usdAmount || 0)}</strong>
           </div>
         </div>
+        <Assure>
+          {target?.kind === "link"
+            ? "Waits in a Monad contract until they tap. Homeward never holds it."
+            : `Goes straight to ${target ? `${recipientName}'s` : "their"} own account. Homeward never holds it.`}
+        </Assure>
       </div>
 
       <div className="section-head">
@@ -187,7 +192,7 @@ export function Send() {
           </span>
           <span>
             Someone new
-            <small>Send a link. They sign up with one tap.</small>
+            <small>Send a link. No app or bank account needed.</small>
           </span>
           {target?.kind === "link" && <span className="tick">✓</span>}
         </button>
@@ -260,6 +265,7 @@ function Done({
             Your courier is holding {usd(amount)} on their roof. Send them the link and it hands it over when they tap. Only share it with
             them. It flies back to you after 14 days if nobody opens it.
           </p>
+          <Assure>It waits in a Monad contract, not with Homeward. Only this link can open it.</Assure>
           <div className="stack">
             <a className="primary" href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">
               Share on WhatsApp
@@ -279,6 +285,7 @@ function Done({
           {usd(amount)} arrived. Confirmed on Monad in {seconds(done.ms)}.
         </p>
       )}
+      {done && !url && <Assure>It's in {flight.name}'s own account now. Only their passkey can move it.</Assure>}
       {done && (
         <div className="card receipt">
           <div className="row">

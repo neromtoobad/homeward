@@ -9,7 +9,7 @@ import { ngn, seconds, short, usd } from "../lib/format.ts";
 import { type Settled, useHomeward } from "../state.tsx";
 import { type Creature, CourierSprite, CreaturePicker, CreatureSprite, isCreature } from "../cast.tsx";
 import { HouseMark } from "./welcome.tsx";
-import { ErrorLine, TxLink, errorText } from "./ui.tsx";
+import { Assure, ErrorLine, TxLink, errorText } from "./ui.tsx";
 
 function secretFromHash(): Hex | null {
   const raw = location.hash.replace(/^#/, "");
@@ -89,9 +89,10 @@ export function Claim() {
         </div>
         <h2 className="display">{usd(dollars)} is yours</h2>
         <p className="lede">
-          It's in your Homeward as real dollars, confirmed on Monad in {seconds(done.ms)}. Keep it, send it on, or cash it out when
-          you're ready.
+          It's in your Homeward as real dollars, confirmed on Monad in {seconds(done.ms)}. Keep it as dollars or send it on.
         </p>
+        <Assure>Only your face or fingerprint can move it.</Assure>
+        <Assure>Nobody can take it back. Not the sender, not Homeward.</Assure>
         <TxLink hash={done.hash} explorer={config?.explorer} />
         <button className="primary" onClick={() => navigate("/")}>
           See my Homeward
@@ -147,6 +148,11 @@ export function Claim() {
                 if (name.trim() && creature) receive(() => create(name.trim(), creature));
               }}
             >
+              <div className="trust">
+                <span>No bank account</span>
+                <span>No app to install</span>
+                <span>No fees</span>
+              </div>
               <label className="field">
                 <span>Your first name</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="So they know it reached you" maxLength={40} />
@@ -159,7 +165,7 @@ export function Claim() {
               <button type="button" className="ghost" disabled={Boolean(busy)} onClick={() => receive(unlock)}>
                 I already have a Homeward
               </button>
-              <p className="fineprint">One tap with your face or fingerprint makes your Homeward. No password, no app store, no fees.</p>
+              <p className="fineprint">One tap with your face or fingerprint makes your Homeward. The money is yours alone, and stays in dollars.</p>
             </form>
           )}
         </>

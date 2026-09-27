@@ -60,6 +60,10 @@ export function Home() {
             </span>
           </div>
         )}
+        <button className="own" onClick={() => navigate("/me")}>
+          <Icon.lock size={14} />
+          Only you can move it
+        </button>
         <CreatureSprite kind={creature} pose={pose} size={124} label={`Your ${creature}`} />
       </div>
 

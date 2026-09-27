@@ -33,6 +33,16 @@ export function TopBar({ title, back = "/" }: { title: string; back?: string }) 
   );
 }
 
+/** A plain promise about who holds the money. Only say what the contracts actually guarantee. */
+export function Assure({ children }: { children: ReactNode }) {
+  return (
+    <p className="assure">
+      <Icon.lock size={16} />
+      <span>{children}</span>
+    </p>
+  );
+}
+
 export function Sheet({ children }: { children: ReactNode }) {
   return <div className="sheet">{children}</div>;
 }

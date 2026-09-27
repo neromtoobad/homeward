@@ -5,7 +5,7 @@ import { cadence, ngn, usd, when } from "../lib/format.ts";
 import type { Contact } from "../lib/vault.ts";
 import { useHomeward } from "../state.tsx";
 import { CourierSprite, CreatureAvatar } from "../cast.tsx";
-import { ErrorLine, TopBar, TxLink, errorText } from "./ui.tsx";
+import { Assure, ErrorLine, TopBar, TxLink, errorText } from "./ui.tsx";
 
 const PERIODS = { daily: 86400, weekly: 7 * 86400, monthly: 30 * 86400 } as const;
 type Cadence = keyof typeof PERIODS;
@@ -70,8 +70,7 @@ export function Schedule() {
       <div className="hero-panel">
         <CourierSprite pose="sleep" size={112} />
         <p>
-          Set it once. Homeward sets the money aside now and your courier delivers it on schedule, with the naira rate recorded on
-          each payment.
+          Set it once. The money is set aside up front, so a payment can't bounce, and Chainlink sends your courier out on time.
         </p>
       </div>
 
@@ -130,6 +129,7 @@ export function Schedule() {
               <p className="muted small">
                 Sets aside up to {usd(budget)} now. Anything unused comes back when you stop it.
               </p>
+              <Assure>Held in a Monad contract, not by Homeward. Each payment records that day's naira rate on-chain.</Assure>
               <ErrorLine error={error} />
               <button className="primary" disabled={!contact || !(n > 0) || Boolean(busy)} onClick={submit}>
                 Start
