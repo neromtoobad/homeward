@@ -10,6 +10,7 @@ export type AppConfig = {
   relayerGas: string;
   explorer: string;
   kimi: boolean;
+  indexer: boolean;
 };
 
 export class ApiError extends Error {
@@ -63,6 +64,21 @@ export type OrderInfo = {
   active: boolean;
 };
 
+export type IndexedPayment = {
+  id: string;
+  kind: "DIRECT" | "LINK" | "ORDER";
+  from_id: Address;
+  to_id: Address;
+  amount: string;
+  ngnPerUsd: string | null;
+  ngnValue: string | null;
+  ref: Hex | null;
+  link_id: Address | null;
+  order_id: string | null;
+  txHash: Hex;
+  timestamp: number;
+};
+
 export type ParsedIntent = {
   kind: "send" | "schedule" | "unknown";
   recipient: string | null;
@@ -83,8 +99,9 @@ export const api = {
   rate: () => call<{ ngnPerUsd: number; sources: string[] }>("GET", "/api/rate"),
   balance: (address: Address) => call<{ ausd: string }>("GET", `/api/balance/${address}`),
   orders: (address: Address) => call<OrderInfo[]>("GET", `/api/orders/${address}`),
+  activity: (address: Address) => call<IndexedPayment[]>("GET", `/api/activity/${address}`),
 
-  transfer: (body: object) => call<TxResult>("POST", "/api/relay/transfer", body),
+  send: (body: object) => call<TxResult>("POST", "/api/relay/send", body),
   createLink: (body: object) => call<TxResult>("POST", "/api/relay/link", body),
   link: (claimKey: Address) => call<LinkInfo>("GET", `/api/links/${claimKey}`),
   claim: (body: object) => call<TxResult>("POST", "/api/relay/claim", body),

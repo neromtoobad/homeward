@@ -9,7 +9,7 @@ import {
   parseSignature,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { type Network, ausdAbi, escrowAbi } from "../shared/config.ts";
+import { type Network, escrowAbi } from "../shared/config.ts";
 
 export type Relayer = ReturnType<typeof createRelayer>;
 
@@ -56,19 +56,9 @@ export function createRelayer(network: Network, privateKey: Hex, rpcUrl?: string
     address: account.address,
     publicClient,
 
-    /** A direct AUSD send to someone who already has an address. */
-    transfer(p: {
-      from: Address;
-      to: Address;
-      value: bigint;
-      validAfter: bigint;
-      validBefore: bigint;
-      nonce: Hex;
-      signature: Hex;
-    }) {
-      return submit(network.ausd, ausdAbi, "transferWithAuthorization", [
-        p.from, p.to, p.value, p.validAfter, p.validBefore, p.nonce, ...vrs(p.signature),
-      ]);
+    /** A direct payment to someone who already has an address. */
+    send(p: { from: Address; to: Address; amount: bigint; validBefore: bigint; ref: Hex; signature: Hex }) {
+      return submit(escrow(), escrowAbi, "send", [p.from, p.to, p.amount, p.validBefore, p.ref, ...vrs(p.signature)]);
     },
 
     createLink(p: {

@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: homeward-indexer
+description: Homeward payments on Monad (HomewardEscrow events)
+contracts:
+  - name: HomewardEscrow
+    events:
+      - event: "Sent(address indexed from, address indexed to, uint256 amount, bytes32 indexed ref)"
+      - event: "LinkCreated(address indexed claimKey, address indexed sender, uint256 amount, uint256 expiry)"
+      - event: "LinkClaimed(address indexed claimKey, address indexed sender, address indexed recipient, uint256 amount)"
+      - event: "LinkRefunded(address indexed claimKey, address indexed sender, uint256 amount)"
+      - event: "OrderCreated(uint256 indexed orderId, address indexed sender, address indexed recipient, uint256 amount, uint256 budget, uint256 firstDue, uint256 period, uint8 mode)"
+      - event: "Remitted(uint256 indexed orderId, address indexed sender, address indexed recipient, uint256 amount, uint256 ngnPerUsd)"
+      - event: "OrderSkipped(uint256 indexed orderId, uint256 ngnPerUsd)"
+      - event: "OrderClosed(uint256 indexed orderId, address indexed sender, uint256 refunded)"
+field_selection:
+  transaction_fields:
+    - hash
+chains:
+  # Monad mainnet. scripts/deploy.ts fills in the escrow address and start block.
+  - id: 143
+    start_block: 0
+    contracts:
+      - name: HomewardEscrow
+        address: "0x0000000000000000000000000000000000000000"

@@ -3,30 +3,10 @@
 // disagree about a nonce or digest, these fail.
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
-import { type Address, type Hex, encodeAbiParameters, parseSignature } from "viem";
+import { type Address, type Hex, encodeAbiParameters, keccak256, parseSignature, toBytes } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { type Ctx, linkNonce, orderNonce, signClaim, signClose, signLink, signOrder, signTransfer } from "../shared/money.ts";
+import { type Ctx, linkNonce, orderNonce, sendNonce, signClaim, signClose, signLink, signOrder, signSend } from "../shared/money.ts";
 import { AUSD, WHALE, ausdAbi, balance, client, deployEscrow, escrowAbi, now, send, usd, warp } from "./fork.ts";
-
-const transferAbi = [
-  {
-    type: "function",
-    name: "transferWithAuthorization",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "from", type: "address" },
-      { name: "to", type: "address" },
-      { name: "value", type: "uint256" },
-      { name: "validAfter", type: "uint256" },
-      { name: "validBefore", type: "uint256" },
-      { name: "nonce", type: "bytes32" },
-      { name: "v", type: "uint8" },
-      { name: "r", type: "bytes32" },
-      { name: "s", type: "bytes32" },
-    ],
-    outputs: [],
-  },
-] as const;
 
 const alice = privateKeyToAccount(generatePrivateKey());
 const mum = privateKeyToAccount(generatePrivateKey());
@@ -73,12 +53,26 @@ describe("client signing helpers against the escrow", () => {
     );
   });
 
-  it("sends directly with transferWithAuthorization", async () => {
-    const t = await signTransfer(alice, ctx, mum.address, usd(12.5));
-    await send(relayer.address, AUSD, transferAbi, "transferWithAuthorization", [
-      t.from, t.to, t.value, t.validAfter, t.validBefore, t.nonce, ...vrs(t.signature),
+  it("sends directly through the escrow, with the note hash onchain", async () => {
+    const ref = keccak256(toBytes("sealed-note-ciphertext"));
+    assert.equal(
+      sendNonce(ctx.escrow, mum.address, ref),
+      await client.readContract({ address: ctx.escrow, abi: escrowAbi, functionName: "sendNonce", args: [mum.address, ref] }),
+    );
+    const t = await signSend(alice, ctx, mum.address, usd(12.5), ref);
+    const res = await send(relayer.address, ctx.escrow, escrowAbi, "send", [
+      t.from, t.to, t.amount, t.validBefore, t.ref, ...vrs(t.signature),
     ]);
     assert.equal(await balance(mum.address), usd(12.5));
+    assert.equal(await balance(ctx.escrow), 0n);
+    const sent = res.logs?.find((l: any) => l.address.toLowerCase() === ctx.escrow.toLowerCase());
+    assert.ok(sent, "Sent event emitted");
+    assert.equal(sent.topics[3], ref);
+
+    // The same authorization can't be replayed to someone else.
+    await assert.rejects(
+      send(relayer.address, ctx.escrow, escrowAbi, "send", [t.from, relayer.address, t.amount, t.validBefore, t.ref, ...vrs(t.signature)]),
+    );
   });
 
   it("creates and claims a link", async () => {

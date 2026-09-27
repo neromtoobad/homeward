@@ -16,7 +16,7 @@ Sending $50 from London or Houston to a mother in Lagos still means a remittance
 
 **Sending to someone new is a link.** The sender signs once and gets a link to share on WhatsApp. The recipient opens it and sees who sent how much, plus a private note. One tap with her face or fingerprint creates her Homeward and the dollars land. She never needs MON.
 
-**Sending to someone you know is instant.** AUSD supports EIP-3009, so every transfer is a signature that our relayer submits. The money settles on Monad in under a second.
+**Sending to someone you know is instant.** AUSD supports EIP-3009, so every payment is a signature that our relayer submits. It passes through `HomewardEscrow.send`, which emits a `Sent` event whose `ref` is the hash of the encrypted note, so the recipient can check the note against the chain. The money settles on Monad in under a second.
 
 **Standing orders.** "$50 to Mum every Friday", or "keep Mum's balance at $100". The sender prepays and the escrow holds the funds. A Chainlink CRE workflow releases each payment when it's due and writes the naira rate it used on-chain, so every receipt says what the money was worth where it landed.
 
@@ -55,6 +55,8 @@ The two outputs are unrelated. Knowing the wallet key reveals nothing about the 
 - `contracts/HomewardEscrow.sol` holds AUSD for claim links and prepaid standing orders. Every deposit uses `receiveWithAuthorization`, and the signed EIP-3009 nonce is derived from the deposit's parameters. The relayer can submit a deposit but cannot change who it's for, when it expires, or how it pays out. A claim is signed by the link's own key and names the recipient, so a front-runner can't redirect it.
 - `server/` holds the relayer (simulates before sending, pads gas because Monad bills the gas limit), the ciphertext vault store, profiles (handle and inbox public key), the naira rate as a median of public sources, and the Kimi intent parser. It also serves the web app.
 - `web/` is a React PWA: onboarding, send, claim, standing orders and settings.
+- `cre/` is the Chainlink CRE workflow that runs standing orders.
+- `indexer/` is the Envio HyperIndex project behind Activity and receipts.
 - `shared/` has network config and the signing helpers, used by both the web app and the tests.
 
 ## Sponsor integrations
@@ -63,9 +65,9 @@ The two outputs are unrelated. Knowing the wallet key reveals nothing about the 
 |---|---|---|
 | **Agora (AUSD)** | The currency. EIP-3009 transfers make every flow gasless; `receiveWithAuthorization` funds the escrow. | Working (fork of testnet) |
 | **Mera** | The entire account layer; the dual-salt client adds a second, non-wallet key family. | Working |
-| **Chainlink CRE** | Orchestrates standing orders: cron trigger, EVM read of due orders, FX rate over HTTP with consensus, report to `onReport`. | Contract side working; workflow in progress |
+| **Chainlink CRE** | `cre/homeward-orders`: cron trigger, EVM read of due orders, naira rate from three public sources (median per node, then across the DON, out-of-band values dropped), one report to `onReport` that pays every due order. | Workflow built, unit-tested with the SDK mocks, compiles to WASM; the escrow accepts the production and simulation forwarders |
 | **Kimi** | Natural-language send and schedule requests. | Built, needs an API key |
-| **Envio** | History and receipts indexed from escrow and AUSD events. | Planned |
+| **Envio** | `indexer/`: HyperIndex over every HomewardEscrow event. Payments of each kind, link lifecycles, standing orders with payout history and naira value, per-day and all-time totals. Powers the Activity screen. | Handlers built and tested; hosted deployment pending |
 | **Aurora Intents** | "Add money" from any chain: USDC from Base, Arbitrum and others arrives as AUSD. | Planned |
 | **Monad** | ~400 ms blocks make a claim feel instant; the P256 precompile and EIP-7702 are live but not needed for this design. | — |
 
@@ -76,7 +78,9 @@ Requires Node 24 (the server uses the built-in `node:sqlite`).
 ```bash
 npm install
 npm run compile            # contracts -> out/ and shared/escrow-abi.json
-npm test                   # escrow + client signing tests on a Monad testnet fork
+npm test                   # escrow, client signing and activity tests on a Monad testnet fork
+(cd cre && bun install && bun test && bun run compile)   # CRE workflow tests, then WASM
+(cd indexer && npm install && npx envio codegen && npm test)   # Envio handler tests
 npm run build              # web app -> web/dist
 ```
 
@@ -95,14 +99,14 @@ Passkeys with PRF need iCloud Keychain on iOS 18+, Google Password Manager on An
 ## Status
 
 Done and tested:
-- Escrow contract: links, claims, refunds, fixed and top-up standing orders, CRE report entry point. Covered by tests against real AUSD on a fork.
+- Escrow contract: direct sends, links, claims, refunds, fixed and top-up standing orders, CRE report entry point. Covered by tests against real AUSD on a fork.
+- Chainlink CRE workflow and Envio indexer, each with their own tests.
 - Client signing helpers, verified against the contract's own nonce and digest functions.
 - Web app: onboarding, unlock (including with no local state), send by link or directly, claim, encrypted notes and vault, re-share or take back a link, standing orders.
 
 Next:
 - Mainnet deployment and a public URL
-- The Chainlink CRE workflow package
-- Envio indexer for full history
+- Deploy the CRE workflow and host the Envio indexer
 - Aurora Intents deposits
 - Android wrapper (Trusted Web Activity)
 - Cash-out routes to naira

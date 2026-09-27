@@ -1,5 +1,5 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { type Address, type Hex, isAddress } from "viem";
+import { type Address, type Hex, isAddress, keccak256, toBytes } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import {
   type Ctx,
@@ -8,10 +8,10 @@ import {
   signClose,
   signLink,
   signOrder,
-  signTransfer,
+  signSend,
   toUnits,
 } from "../../shared/money.ts";
-import { type AppConfig, type OrderInfo, api } from "./lib/api.ts";
+import { type AppConfig, type IndexedPayment, type OrderInfo, api } from "./lib/api.ts";
 import { open, seal, sealForLink } from "./lib/crypto.ts";
 import {
   HIDDEN_LIMIT_MS,
@@ -34,6 +34,7 @@ type State = {
   vault: VaultData | null;
   balance: bigint | null;
   orders: OrderInfo[];
+  payments: IndexedPayment[] | null;
   busy: string | null;
 };
 
@@ -75,6 +76,8 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
   const [vault, setVault] = useState<VaultData | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
   const [orders, setOrders] = useState<OrderInfo[]>([]);
+  // From the Envio indexer when it's configured; null means "use the vault".
+  const [payments, setPayments] = useState<IndexedPayment[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const vaultVersion = useRef(0);
   const lastActive = useRef(Date.now());
@@ -99,6 +102,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
     setVault(null);
     setBalance(null);
     setOrders([]);
+    setPayments(null);
   }, []);
 
   // End the session when idle or after time in the background.
@@ -128,13 +132,15 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!session) return;
-    const [b, o] = await Promise.all([
+    const [b, o, a] = await Promise.all([
       api.balance(session.account.address),
       api.orders(session.account.address).catch(() => [] as OrderInfo[]),
+      config?.indexer ? api.activity(session.account.address).catch(() => null) : Promise.resolve(null),
     ]);
     setBalance(BigInt(b.ausd));
     setOrders(o);
-  }, [session]);
+    if (a) setPayments(a);
+  }, [session, config]);
 
   useEffect(() => {
     refresh().catch(console.error);
@@ -272,7 +278,6 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
         if (!session || !vault) throw new Error("locked");
         await stepUp(amountUsd);
         const value = toUnits(amountUsd);
-        const auth = await signTransfer(session.account, ctx(), contact.address, value);
         const inboxKey = contact.inboxKey ?? (await api.profile(contact.address).catch(() => null))?.inboxKey;
         const sealedNote = inboxKey
           ? await seal(
@@ -285,7 +290,9 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
               }),
             )
           : undefined;
-        const { hash } = await api.transfer({ ...auth, sealedNote });
+        // The note's hash rides onchain as the payment's ref.
+        const signed = await signSend(session.account, ctx(), contact.address, value, sealedNote ? keccak256(toBytes(sealedNote)) : undefined);
+        const { hash } = await api.send({ ...signed, sealedNote });
         await updateVault((v) =>
           upsertContact(
             {
@@ -433,6 +440,7 @@ export function HomewardProvider({ children }: { children: ReactNode }) {
     vault,
     balance,
     orders,
+    payments,
     busy,
     create: doCreate,
     unlock: doUnlock,

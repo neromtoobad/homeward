@@ -38,6 +38,13 @@ contract HomewardEscrow {
     /// the owner trusts as a fallback.
     mapping(address => bool) public isReporter;
 
+    // ---------------------------------------------------------------- sends
+
+    /// A direct payment between two people. `ref` is the hash of the sealed
+    /// note that travels with it (or a random value when there is none), so
+    /// the note a recipient reads can be checked against the chain.
+    event Sent(address indexed from, address indexed to, uint256 amount, bytes32 indexed ref);
+
     // ---------------------------------------------------------------- links
 
     struct Link {
@@ -119,6 +126,30 @@ contract HomewardEscrow {
         if (msg.sender != owner) revert NotOwner();
         isReporter[reporter] = allowed;
         emit ReporterSet(reporter, allowed);
+    }
+
+    // ================================================================ sends
+
+    /// The EIP-3009 nonce a sender signs for a direct payment.
+    function sendNonce(address to, bytes32 ref) public view returns (bytes32) {
+        return keccak256(abi.encode(address(this), "send", to, ref));
+    }
+
+    /// Pays `to` straight away. It passes through the escrow only so the
+    /// payment is recognisably a Homeward one onchain.
+    function send(
+        address from,
+        address to,
+        uint96 amount,
+        uint256 validBefore,
+        bytes32 ref,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        ausd.receiveWithAuthorization(from, address(this), amount, 0, validBefore, sendNonce(to, ref), v, r, s);
+        ausd.transfer(to, amount);
+        emit Sent(from, to, amount, ref);
     }
 
     // ================================================================ links
@@ -274,21 +305,21 @@ contract HomewardEscrow {
         // due is skipped rather than reverting the whole batch.
         if (order.budget == 0 || order.nextDue > block.timestamp) return;
 
-        uint256 send = order.amount;
+        uint256 payout = order.amount;
         if (order.mode == Mode.TopUp) {
             uint256 balance = ausd.balanceOf(order.recipient);
-            send = balance >= order.amount ? 0 : order.amount - balance;
+            payout = balance >= order.amount ? 0 : order.amount - balance;
         }
-        if (send > order.budget) send = order.budget;
+        if (payout > order.budget) payout = order.budget;
 
         order.nextDue += order.period;
-        if (send == 0) {
+        if (payout == 0) {
             emit OrderSkipped(orderId, ngnPerUsd);
             return;
         }
-        order.budget -= uint96(send);
-        ausd.transfer(order.recipient, send);
-        emit Remitted(orderId, order.sender, order.recipient, send, ngnPerUsd);
+        order.budget -= uint96(payout);
+        ausd.transfer(order.recipient, payout);
+        emit Remitted(orderId, order.sender, order.recipient, payout, ngnPerUsd);
         if (order.budget == 0) emit OrderClosed(orderId, order.sender, 0);
     }
 

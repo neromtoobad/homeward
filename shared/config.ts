@@ -74,8 +74,8 @@ export const ausdAbi = parseAbi([
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ]);
 
-export const TRANSFER_AUTH_TYPES = {
-  TransferWithAuthorization: [
+export const RECEIVE_AUTH_TYPES = {
+  ReceiveWithAuthorization: [
     { name: "from", type: "address" },
     { name: "to", type: "address" },
     { name: "value", type: "uint256" },
@@ -83,8 +83,4 @@ export const TRANSFER_AUTH_TYPES = {
     { name: "validBefore", type: "uint256" },
     { name: "nonce", type: "bytes32" },
   ],
-} as const;
-
-export const RECEIVE_AUTH_TYPES = {
-  ReceiveWithAuthorization: TRANSFER_AUTH_TYPES.TransferWithAuthorization,
 } as const;

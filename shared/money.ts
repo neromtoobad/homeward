@@ -9,7 +9,7 @@ import {
   toBytes,
   toHex,
 } from "viem";
-import { AUSD_DECIMALS, AUSD_DOMAIN, RECEIVE_AUTH_TYPES, TRANSFER_AUTH_TYPES } from "./config.ts";
+import { AUSD_DECIMALS, AUSD_DOMAIN, RECEIVE_AUTH_TYPES } from "./config.ts";
 
 export type Ctx = { chainId: number; ausd: Address; escrow: Address };
 
@@ -35,25 +35,6 @@ function randomNonce(): Hex {
   return toHex(crypto.getRandomValues(new Uint8Array(32)));
 }
 
-/** A direct gasless send to an address (EIP-3009 transferWithAuthorization). */
-export async function signTransfer(account: LocalAccount, ctx: Ctx, to: Address, value: bigint) {
-  const message = {
-    from: account.address,
-    to,
-    value,
-    validAfter: 0n,
-    validBefore: validBefore(),
-    nonce: randomNonce(),
-  };
-  const signature = await account.signTypedData({
-    domain: domain(ctx),
-    types: TRANSFER_AUTH_TYPES,
-    primaryType: "TransferWithAuthorization",
-    message,
-  });
-  return { ...message, signature };
-}
-
 async function signReceive(account: LocalAccount, ctx: Ctx, value: bigint, nonce: Hex) {
   const vb = validBefore();
   const signature = await account.signTypedData({
@@ -63,6 +44,24 @@ async function signReceive(account: LocalAccount, ctx: Ctx, value: bigint, nonce
     message: { from: account.address, to: ctx.escrow, value, validAfter: 0n, validBefore: vb, nonce },
   });
   return { validBefore: vb, signature };
+}
+
+// ------------------------------------------------------------------- sends
+
+/** Mirrors HomewardEscrow.sendNonce. */
+export function sendNonce(escrow: Address, to: Address, ref: Hex): Hex {
+  return keccak256(
+    encodeAbiParameters([{ type: "address" }, { type: "string" }, { type: "address" }, { type: "bytes32" }], [escrow, "send", to, ref]),
+  );
+}
+
+/**
+ * A direct payment through HomewardEscrow.send. `ref` should be the hash of
+ * the sealed note, so the recipient can check the note against the chain.
+ */
+export async function signSend(account: LocalAccount, ctx: Ctx, to: Address, amount: bigint, ref: Hex = randomNonce()) {
+  const auth = await signReceive(account, ctx, amount, sendNonce(ctx.escrow, to, ref));
+  return { from: account.address, to, amount, ref, ...auth };
 }
 
 // ------------------------------------------------------------------- links

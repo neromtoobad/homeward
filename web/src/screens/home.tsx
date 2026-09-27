@@ -4,13 +4,14 @@ import { privateKeyToAccount } from "viem/accounts";
 import { fromUnits } from "../../../shared/money.ts";
 import { navigate } from "../app.tsx";
 import { type ParsedIntent, api } from "../lib/api.ts";
+import { buildActivity } from "../lib/activity.ts";
 import { ago, cadence, ngn, usd, when } from "../lib/format.ts";
 import { useHomeward } from "../state.tsx";
 import type { SentItem } from "../lib/vault.ts";
 import { ErrorLine, TxLink, errorText } from "./ui.tsx";
 
 export function Home() {
-  const { vault, balance, rate, orders, config, session } = useHomeward();
+  const { vault, balance, rate, orders, config, session, payments } = useHomeward();
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   if (!vault || !session) return null;
@@ -18,10 +19,7 @@ export function Home() {
   const me = session.account.address.toLowerCase();
   const outgoing = orders.filter((o) => o.active && o.sender.toLowerCase() === me);
 
-  const activity = [
-    ...vault.sent.map((s) => ({ at: s.at, key: s.txHash, dir: "out" as const, who: s.to, amount: s.amount, note: s.note, sent: s })),
-    ...vault.received.map((r) => ({ at: r.at, key: r.txHash, dir: "in" as const, who: r.from, amount: r.amount, note: r.note, sent: undefined })),
-  ].sort((a, b) => b.at - a.at);
+  const activity = buildActivity(vault, session.account.address, payments);
 
   return (
     <section className="home">
@@ -81,8 +79,13 @@ export function Home() {
             <button className="row activity" onClick={() => setOpen(open === a.key ? null : a.key)} aria-expanded={open === a.key}>
               <span className={`dot ${a.dir}`} aria-hidden />
               <span className="who">
-                {a.dir === "in" ? `From ${a.who}` : a.sent?.kind === "link" ? `Link for ${a.who}` : `To ${a.who}`}
+                {a.label}
                 {a.note && <small>“{a.note}”</small>}
+                {a.ngn && (
+                  <small>
+                    ≈ {ngn(a.ngn.value)} at {ngn(a.ngn.rate)}/$
+                  </small>
+                )}
               </span>
               <span className={`amt ${a.dir}`}>
                 {a.dir === "in" ? "+" : "−"}
@@ -95,7 +98,7 @@ export function Home() {
                 <LinkDetail item={a.sent} />
               ) : (
                 <div className="detail">
-                  <TxLink hash={a.key} explorer={config?.explorer} />
+                  <TxLink hash={a.txHash} explorer={config?.explorer} />
                 </div>
               ))}
           </div>

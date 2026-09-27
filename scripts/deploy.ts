@@ -44,3 +44,18 @@ const deployments = JSON.parse(readFileSync(file, "utf8"));
 deployments[network.name] = { escrow, block: Number(receipt.blockNumber), relayer: account.address };
 writeFileSync(file, `${JSON.stringify(deployments, null, 2)}\n`);
 console.log(`recorded in ${file}`);
+
+// Point the Envio indexer and the CRE workflow at the new escrow.
+if (network.name === "mainnet") {
+  const indexer = "indexer/config.yaml";
+  writeFileSync(
+    indexer,
+    readFileSync(indexer, "utf8")
+      .replace(/start_block: \d+/, `start_block: ${receipt.blockNumber}`)
+      .replace(/address: "0x[0-9a-fA-F]{40}"/, `address: "${escrow}"`),
+  );
+  const cre = "cre/homeward-orders/config.mainnet.json";
+  const creConfig = JSON.parse(readFileSync(cre, "utf8"));
+  writeFileSync(cre, `${JSON.stringify({ ...creConfig, escrowAddress: escrow }, null, 2)}\n`);
+  console.log(`updated ${indexer} and ${cre}`);
+}

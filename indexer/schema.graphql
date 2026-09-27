@@ -1,0 +1,110 @@
+# Everything Homeward's Activity screen and receipts need, derived from
+# HomewardEscrow events. Amounts are AUSD base units (6 decimals); rates are
+# naira per dollar with 6 decimals.
+
+enum PaymentKind {
+  DIRECT
+  LINK
+  ORDER
+}
+
+enum LinkStatus {
+  OPEN
+  CLAIMED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderMode {
+  FIXED
+  TOPUP
+}
+
+type Account {
+  id: ID!
+  sent: [Payment!]! @derivedFrom(field: "from")
+  received: [Payment!]! @derivedFrom(field: "to")
+  linksMade: [Link!]! @derivedFrom(field: "sender")
+  ordersFunded: [Order!]! @derivedFrom(field: "sender")
+  ordersReceiving: [Order!]! @derivedFrom(field: "recipient")
+  sentTotal: BigInt!
+  receivedTotal: BigInt!
+  sentCount: Int!
+  receivedCount: Int!
+  firstSeen: Int!
+  lastSeen: Int!
+}
+
+type Payment {
+  id: ID!
+  kind: PaymentKind!
+  from: Account!
+  to: Account!
+  amount: BigInt!
+  "Naira per dollar at the moment it landed, for standing-order payments"
+  ngnPerUsd: BigInt
+  "What the payment was worth in naira (6 decimals), when a rate is known"
+  ngnValue: BigInt
+  "Direct sends: hash of the sealed note, so the note can be checked"
+  ref: String
+  link: Link
+  order: Order
+  txHash: String!
+  blockNumber: Int!
+  timestamp: Int! @index
+}
+
+type Link {
+  id: ID!
+  sender: Account!
+  recipient: Account
+  amount: BigInt!
+  expiry: Int!
+  status: LinkStatus!
+  createdAt: Int!
+  settledAt: Int
+  createdTx: String!
+  settledTx: String
+}
+
+type Order {
+  id: ID!
+  sender: Account!
+  recipient: Account!
+  mode: OrderMode!
+  amount: BigInt!
+  budget: BigInt!
+  budgetLeft: BigInt!
+  period: Int!
+  nextDue: Int!
+  paidCount: Int!
+  paidTotal: BigInt!
+  skippedCount: Int!
+  lastRate: BigInt
+  active: Boolean!
+  refunded: BigInt!
+  payments: [Payment!]! @derivedFrom(field: "order")
+  createdAt: Int!
+}
+
+"One row per UTC day: volume by kind and the average rate recorded."
+type DailyStats {
+  id: ID!
+  volume: BigInt!
+  payments: Int!
+  direct: Int!
+  links: Int!
+  orders: Int!
+  rateSum: BigInt!
+  rateSamples: Int!
+}
+
+type Totals {
+  id: ID!
+  volume: BigInt!
+  payments: Int!
+  accounts: Int!
+  linksCreated: Int!
+  linksClaimed: Int!
+  ordersCreated: Int!
+}

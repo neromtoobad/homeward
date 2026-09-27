@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { type Context, Hono } from "hono";
-import { type Address, type Hex, formatUnits, isAddress, isHex, verifyMessage } from "viem";
+import { type Address, type Hex, formatUnits, getAddress, isAddress, isHex, keccak256, toBytes, verifyMessage } from "viem";
 import { AUTH_HEADER, AUTH_WINDOW_MS, authMessage, decodeAuth } from "../shared/auth.ts";
 import { AUSD_DECIMALS, NETWORKS, type NetworkName, ausdAbi, escrowAbi } from "../shared/config.ts";
 import { parseIntent } from "./intent.ts";
@@ -101,6 +101,7 @@ app.get("/api/config", async (c) => {
     relayerGas: formatUnits(gas, 18),
     explorer: network.chain.blockExplorers?.default.url,
     kimi: Boolean(process.env.KIMI_API_KEY),
+    indexer: Boolean(process.env.ENVIO_GRAPHQL_URL),
   });
 });
 
@@ -158,21 +159,22 @@ app.get("/api/orders/:address", async (c) => {
 
 // -------------------------------------------------------------------- relay
 
-app.post("/api/relay/transfer", async (c) => {
+app.post("/api/relay/send", async (c) => {
   rateLimit(c);
   const b = await c.req.json();
-  const result = await relayer.transfer({
+  const ref = hex(b.ref, "ref");
+  const sealed = typeof b.sealedNote === "string" && b.sealedNote.length < 4000 ? b.sealedNote : null;
+  // A note is only accepted if the chain will vouch for it.
+  if (sealed && keccak256(toBytes(sealed)) !== ref) throw new HttpError(400, "ref must be the hash of the sealed note");
+  const result = await relayer.send({
     from: addr(b.from, "from"),
     to: addr(b.to, "to"),
-    value: big(b.value, "value"),
-    validAfter: big(b.validAfter, "validAfter"),
+    amount: big(b.amount, "amount"),
     validBefore: big(b.validBefore, "validBefore"),
-    nonce: hex(b.nonce, "nonce"),
+    ref,
     signature: hex(b.signature, "signature"),
   });
-  if (typeof b.sealedNote === "string" && b.sealedNote.length < 4000) {
-    store.addNote(b.to, b.sealedNote, result.hash);
-  }
+  if (sealed) store.addNote(b.to, sealed, result.hash);
   return c.json(result);
 });
 
@@ -260,6 +262,30 @@ app.post("/api/relay/close", async (c) => {
   rateLimit(c);
   const b = await c.req.json();
   return c.json(await relayer.closeOrder({ orderId: big(b.orderId, "orderId"), signature: hex(b.signature, "signature") }));
+});
+
+// --------------------------------------------------------------- activity
+
+const PAYMENTS_QUERY = `query Activity($me: String!) {
+  Payment(where: {_or: [{from_id: {_eq: $me}}, {to_id: {_eq: $me}}]}, order_by: {timestamp: desc}, limit: 100) {
+    id kind from_id to_id amount ngnPerUsd ngnValue ref link_id order_id txHash timestamp
+  }
+}`;
+
+/** Everything paid to or from an address, from the Envio indexer. */
+app.get("/api/activity/:address", async (c) => {
+  const url = process.env.ENVIO_GRAPHQL_URL;
+  if (!url) throw new HttpError(503, "indexer not configured");
+  const me = getAddress(addr(c.req.param("address"), "address"));
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: PAYMENTS_QUERY, variables: { me } }),
+    signal: AbortSignal.timeout(8000),
+  });
+  const json = (await res.json()) as { data?: { Payment: unknown[] }; errors?: { message: string }[] };
+  if (!res.ok || json.errors) throw new Error(json.errors?.[0]?.message ?? `indexer ${res.status}`);
+  return c.json(json.data?.Payment ?? []);
 });
 
 // ------------------------------------------------------ profiles and notes
