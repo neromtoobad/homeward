@@ -13,3 +13,11 @@ mainnet-settings:
     workflow-path: "./main.ts"
     config-path: "./config.mainnet.json"
     secrets-path: ""
+
+local-settings:
+  user-workflow:
+    workflow-name: "homeward-orders-local"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.local.json"
+    secrets-path: ""

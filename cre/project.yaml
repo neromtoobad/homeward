@@ -8,3 +8,9 @@ mainnet-settings:
   rpcs:
     - chain-name: monad-mainnet
       url: https://rpc.monad.xyz
+
+# The local fork from scripts/local-chain.ts (chain id 10143).
+local-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: http://localhost:8545
