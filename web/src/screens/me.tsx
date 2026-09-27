@@ -1,0 +1,87 @@
+import { useState } from "react";
+import { navigate } from "../app.tsx";
+import { HIDDEN_LIMIT_MS, IDLE_LIMIT_MS, PROMPT_FREE_LIMIT_USD, exportPhrase } from "../lib/keys.ts";
+import { short, usd } from "../lib/format.ts";
+import { useHomeward } from "../state.tsx";
+import { ErrorLine, TopBar, errorText } from "./ui.tsx";
+
+export function Me() {
+  const { vault, session, config, setHandle, lock } = useHomeward();
+  const [handle, setHandleInput] = useState(vault?.handle ?? "");
+  const [phrase, setPhrase] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  if (!vault || !session) return null;
+
+  async function run(fn: () => Promise<void>) {
+    setError(null);
+    try {
+      await fn();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
+
+  return (
+    <section className="me">
+      <TopBar title={vault.name || "You"} />
+
+      <div className="card">
+        <h3>Your Homeward name</h3>
+        <p className="muted small">People can send to @name instead of a long address.</p>
+        <form
+          className="inline"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(async () => {
+              await setHandle(handle.replace(/^@/, "").toLowerCase());
+              setSaved(true);
+            });
+          }}
+        >
+          <input value={handle} onChange={(e) => setHandleInput(e.target.value)} placeholder="@yourname" pattern="@?[A-Za-z0-9_]{3,20}" />
+          <button className="secondary small">{saved ? "Saved" : "Save"}</button>
+        </form>
+        <p className="muted small mono">{short(session.account.address)}</p>
+      </div>
+
+      <div className="card">
+        <h3>How your passkey protects you</h3>
+        <ul className="policy">
+          <li>Sends up to {usd(PROMPT_FREE_LIMIT_USD)} go through while Homeward is open. Anything larger asks for your passkey again.</li>
+          <li>Homeward locks itself after {IDLE_LIMIT_MS / 60000} minutes idle, or {HIDDEN_LIMIT_MS / 60000} minutes in the background.</li>
+          <li>Your keys are never stored, not on this phone and not on our servers. Each unlock rebuilds them from your passkey.</li>
+          <li>Your contacts and notes are encrypted with a separate key from the same passkey. We can't read them.</li>
+        </ul>
+      </div>
+
+      <div className="card">
+        <h3>Take your money anywhere</h3>
+        <p className="muted small">
+          Your Homeward is a standard wallet. The recovery phrase opens it in MetaMask or any other wallet. Keep it secret.
+        </p>
+        {phrase ? (
+          <p className="phrase mono">{phrase}</p>
+        ) : (
+          <button className="secondary small" onClick={() => run(async () => setPhrase(await exportPhrase(session)))}>
+            Show recovery phrase
+          </button>
+        )}
+      </div>
+
+      <ErrorLine error={error} />
+      <button
+        className="ghost"
+        onClick={() => {
+          lock();
+          navigate("/");
+        }}
+      >
+        Lock Homeward
+      </button>
+      <p className="fineprint center">
+        {config?.network === "mainnet" ? "Monad mainnet" : "Monad testnet"} · AUSD by Agora · passkeys by Mera
+      </p>
+    </section>
+  );
+}

@@ -37,6 +37,12 @@ export function openStore(dir: string) {
       created_at INTEGER NOT NULL
     );
   `);
+  // Added after launch: who a link paid out to.
+  try {
+    db.exec("ALTER TABLE links ADD COLUMN recipient TEXT");
+  } catch {
+    // already there
+  }
 
   const lower = (a: string) => a.toLowerCase();
 
@@ -100,9 +106,13 @@ export function openStore(dir: string) {
     },
 
     getLink(claimKey: string) {
-      return db.prepare("SELECT sealed, tx_hash, created_at FROM links WHERE claim_key = ?").get(lower(claimKey)) as
-        | { sealed: string | null; tx_hash: string; created_at: number }
+      return db.prepare("SELECT sealed, tx_hash, created_at, recipient FROM links WHERE claim_key = ?").get(lower(claimKey)) as
+        | { sealed: string | null; tx_hash: string; created_at: number; recipient: string | null }
         | undefined;
+    },
+
+    setLinkRecipient(claimKey: string, recipient: string) {
+      db.prepare("UPDATE links SET recipient = ? WHERE claim_key = ?").run(lower(recipient), lower(claimKey));
     },
   };
 }

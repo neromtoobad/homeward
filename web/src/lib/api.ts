@@ -1,0 +1,111 @@
+import type { Address, Hex, LocalAccount } from "viem";
+import { AUTH_HEADER, authMessage, encodeAuth } from "../../../shared/auth.ts";
+
+export type AppConfig = {
+  network: "mainnet" | "testnet";
+  chainId: number;
+  ausd: Address;
+  escrow: Address | null;
+  relayer: Address;
+  relayerGas: string;
+  explorer: string;
+  kimi: boolean;
+};
+
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+async function call<T>(method: string, path: string, body?: unknown, account?: LocalAccount): Promise<T> {
+  const text = body === undefined ? "" : JSON.stringify(body, (_, v) => (typeof v === "bigint" ? v.toString() : v));
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers["content-type"] = "application/json";
+  if (account) {
+    const timestamp = Date.now();
+    const signature = await account.signMessage({ message: authMessage(method, path.split("?")[0], timestamp, text) });
+    headers[AUTH_HEADER] = encodeAuth(account.address, timestamp, signature);
+  }
+  const res = await fetch(path, { method, headers, ...(body !== undefined ? { body: text } : {}) });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, json.error ?? res.statusText);
+  return json as T;
+}
+
+export type TxResult = { hash: Hex; blockNumber: number };
+
+export type LinkInfo = {
+  sender: Address;
+  senderHandle: string | null;
+  amount: string;
+  claimed: boolean;
+  expiry: number;
+  sealedNote: string | null;
+  txHash: string | null;
+  recipient: Address | null;
+};
+
+export type Profile = { address: Address; handle: string | null; inboxKey: Hex };
+
+export type OrderInfo = {
+  id: number;
+  sender: Address;
+  recipient: Address;
+  amount: string;
+  budget: string;
+  nextDue: number;
+  period: number;
+  mode: "fixed" | "topup";
+  active: boolean;
+};
+
+export type ParsedIntent = {
+  kind: "send" | "schedule" | "unknown";
+  recipient: string | null;
+  amount: number | null;
+  currency: "USD" | "NGN" | null;
+  mode: "fixed" | "topup";
+  cadence: "daily" | "weekly" | "monthly" | null;
+  weekday: number | null;
+  count: number | null;
+  note: string | null;
+  explanation: string;
+  usd: number | null;
+  ngnPerUsd: number | null;
+};
+
+export const api = {
+  config: () => call<AppConfig>("GET", "/api/config"),
+  rate: () => call<{ ngnPerUsd: number; sources: string[] }>("GET", "/api/rate"),
+  balance: (address: Address) => call<{ ausd: string }>("GET", `/api/balance/${address}`),
+  orders: (address: Address) => call<OrderInfo[]>("GET", `/api/orders/${address}`),
+
+  transfer: (body: object) => call<TxResult>("POST", "/api/relay/transfer", body),
+  createLink: (body: object) => call<TxResult>("POST", "/api/relay/link", body),
+  link: (claimKey: Address) => call<LinkInfo>("GET", `/api/links/${claimKey}`),
+  claim: (body: object) => call<TxResult>("POST", "/api/relay/claim", body),
+  createOrder: (body: object) => call<TxResult>("POST", "/api/relay/order", body),
+  closeOrder: (body: object) => call<TxResult>("POST", "/api/relay/close", body),
+
+  profile: (address: Address) => call<Profile>("GET", `/api/profiles/${address}`),
+  handle: (handle: string) => call<Profile>("GET", `/api/handles/${encodeURIComponent(handle)}`),
+  putProfile: (account: LocalAccount, handle: string | null, inboxKey: Hex) =>
+    call<{ ok: true }>("PUT", `/api/profiles/${account.address}`, { handle, inboxKey }, account),
+  notes: (account: LocalAccount, after = 0) =>
+    call<{ id: number; sealed: string; tx_hash: string | null; created_at: number }[]>(
+      "GET",
+      `/api/notes?after=${after}`,
+      undefined,
+      account,
+    ),
+
+  getVault: (account: LocalAccount) => call<{ blob: string | null; version: number }>("GET", "/api/vault", undefined, account),
+  putVault: (account: LocalAccount, blob: string, version: number) =>
+    call<{ version: number }>("PUT", "/api/vault", { blob, version }, account),
+
+  intent: (text: string, contacts: string[]) => call<ParsedIntent>("POST", "/api/intent", { text, contacts }),
+};

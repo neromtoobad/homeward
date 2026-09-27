@@ -5,7 +5,6 @@ import {
   type Hex,
   createPublicClient,
   createWalletClient,
-  fallback,
   http,
   parseSignature,
 } from "viem";
@@ -15,7 +14,7 @@ import { type Network, ausdAbi, escrowAbi } from "../shared/config.ts";
 export type Relayer = ReturnType<typeof createRelayer>;
 
 export function createRelayer(network: Network, privateKey: Hex, rpcUrl?: string) {
-  const transport = rpcUrl ? fallback([http(rpcUrl), http()]) : http();
+  const transport = http(rpcUrl);
   const account = privateKeyToAccount(privateKey);
   const publicClient = createPublicClient({ chain: network.chain, transport });
   const walletClient = createWalletClient({ account, chain: network.chain, transport });
@@ -31,8 +30,12 @@ export function createRelayer(network: Network, privateKey: Hex, rpcUrl?: string
 
   async function submit(address: Address, abi: any, functionName: string, args: unknown[]) {
     const { request } = await publicClient.simulateContract({ account, address, abi, functionName, args });
+    // Estimates net out storage refunds that execution still has to front,
+    // so a bare estimate can run out of gas. Monad bills the gas limit, so
+    // the margin stays modest.
+    const estimate = await publicClient.estimateContractGas({ account, address, abi, functionName, args });
     return serial(async () => {
-      const hash = await walletClient.writeContract(request);
+      const hash = await walletClient.writeContract({ ...request, gas: (estimate * 125n) / 100n });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== "success") throw new Error(`reverted: ${hash}`);
       return { hash, blockNumber: Number(receipt.blockNumber) };

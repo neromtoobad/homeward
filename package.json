@@ -4,7 +4,12 @@
   "description": "Send dollars home in one tap: AUSD remittances on Monad with passkeys",
   "scripts": {
     "compile": "tsx scripts/compile.ts",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "dev": "tsx watch server/index.ts",
+    "dev:web": "vite --config web/vite.config.ts",
+    "build": "vite build --config web/vite.config.ts",
+    "start": "tsx server/index.ts",
+    "typecheck": "tsc -p ."
   },
   "license": "MIT",
   "type": "module",

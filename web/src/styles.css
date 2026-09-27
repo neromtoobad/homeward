@@ -1,0 +1,635 @@
+:root {
+  --paper: #f6f1e7;
+  --card: #fffcf5;
+  --ink: #1d1b17;
+  --muted: #6d675b;
+  --line: #e6ddca;
+  --accent: #c0532b;
+  --accent-ink: #fffaf2;
+  --green: #1d6b4c;
+  --red: #a33a2a;
+  --focus: #c0532b55;
+  --radius: 18px;
+  --display: "Fraunces", Georgia, serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #15130f;
+    --card: #1f1c17;
+    --ink: #f2ece0;
+    --muted: #a39b8b;
+    --line: #34302a;
+    --accent: #e0714a;
+    --accent-ink: #1a0f0a;
+    --green: #5cbf93;
+    --red: #e2826f;
+    --focus: #e0714a66;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shell {
+  max-width: 460px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+}
+
+.display {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+h1.display {
+  font-size: 40px;
+  line-height: 1.05;
+  margin: 12px 0;
+}
+
+h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+
+h2.display {
+  font-size: 30px;
+  margin: 8px 0;
+}
+
+h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.lede {
+  color: var(--muted);
+  font-size: 17px;
+  margin: 0 0 24px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 13px;
+}
+
+.center {
+  text-align: center;
+}
+
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.fineprint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 24px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inline {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.inline > input,
+.inline > .field {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- controls */
+
+button,
+a.primary,
+a.secondary {
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 20px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.08s ease, opacity 0.15s ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.secondary {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.big {
+  width: 100%;
+  padding: 17px 20px;
+  font-size: 17px;
+}
+
+button.small,
+a.small {
+  padding: 9px 14px;
+  font-size: 14px;
+}
+
+.chip {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--ink);
+}
+
+input,
+select {
+  font: inherit;
+  width: 100%;
+  border: 0;
+  border-radius: 14px;
+  padding: 13px 14px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.field > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.error {
+  color: var(--red);
+  font-size: 14px;
+  margin: 12px 0;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 14px 0;
+  box-shadow: 0 1px 0 var(--line);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.card h3 + .row,
+.card .row:first-of-type {
+  border-top: 0;
+}
+
+.row small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  display: inline-grid;
+  place-items: center;
+}
+
+.avatar.small {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- welcome */
+
+.welcome {
+  padding-top: 8vh;
+}
+
+.welcome-mark {
+  margin-bottom: 12px;
+}
+
+/* ------------------------------------------------------------------- home */
+
+.home-head,
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.topbar h2 {
+  font-size: 17px;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 22px;
+  color: var(--accent);
+}
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 0 20px;
+}
+
+.label {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.amount {
+  font-size: 52px;
+  line-height: 1.05;
+  margin: 4px 0;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 17px;
+  margin: 0;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.actions button {
+  padding: 13px 8px;
+  font-size: 15px;
+}
+
+.ask {
+  position: relative;
+  margin-top: 16px;
+}
+
+.ask input {
+  padding-right: 52px;
+  border-radius: 999px;
+}
+
+.icon-btn {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+
+.intent {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.intent p {
+  margin: 0;
+  font-size: 15px;
+}
+
+button.row {
+  width: 100%;
+  background: transparent;
+  color: inherit;
+  border-radius: 0;
+  font-weight: 400;
+  text-align: left;
+  padding: 10px 0;
+}
+
+.detail {
+  padding: 4px 0 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity .who {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity .who small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dot.in {
+  background: var(--green);
+}
+
+.dot.out {
+  background: var(--accent);
+}
+
+.amt {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.amt.in {
+  color: var(--green);
+}
+
+/* ------------------------------------------------------------------- send */
+
+.amount-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 0 8px;
+}
+
+.amount-input {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.amount-input .currency {
+  font-family: var(--display);
+  font-size: 34px;
+  color: var(--muted);
+}
+
+.amount-input input {
+  font-size: 56px;
+  min-width: 1ch;
+  max-width: 8ch;
+  text-align: center;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.contact.on {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.or {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 12px 0;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 4px;
+  margin: 8px 0;
+}
+
+.segmented button {
+  padding: 9px 8px;
+  font-size: 14px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.segmented button.on {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px #0000001a;
+}
+
+/* ------------------------------------------------------------ done, claim */
+
+.done,
+.claim {
+  padding-top: 10vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.claim .amount {
+  font-size: 60px;
+}
+
+.check {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--paper);
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+}
+
+.note {
+  font-family: var(--display);
+  font-size: 20px;
+  margin: 16px 0;
+  padding-left: 14px;
+  border-left: 3px solid var(--accent);
+}
+
+.txlink {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------- me */
+
+.policy {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.phrase {
+  background: var(--paper);
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  word-spacing: 4px;
+}
+
+/* ------------------------------------------------------------------- busy */
+
+.busy {
+  position: fixed;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  box-shadow: 0 6px 24px #0003;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+  button:active {
+    transform: none;
+  }
+}

@@ -13,8 +13,10 @@ import { openStore } from "./store.ts";
 // Load .env when running locally; Railway injects variables directly.
 if (existsSync(".env")) process.loadEnvFile(".env");
 
-const network = NETWORKS[(process.env.NETWORK as NetworkName) ?? "mainnet"];
-if (!network) throw new Error(`unknown NETWORK ${process.env.NETWORK}`);
+const base = NETWORKS[(process.env.NETWORK as NetworkName) ?? "mainnet"];
+if (!base) throw new Error(`unknown NETWORK ${process.env.NETWORK}`);
+// ESCROW_ADDRESS points at a local fork or a fresh deploy without editing deployments.json.
+const network = { ...base, escrow: (process.env.ESCROW_ADDRESS as Address | undefined) ?? base.escrow };
 const relayer = createRelayer(network, process.env.RELAYER_PRIVATE_KEY as Hex, process.env.RPC_URL);
 const store = openStore(process.env.DATA_DIR ?? "./data");
 
@@ -213,19 +215,18 @@ app.get("/api/links/:claimKey", async (c) => {
     expiry,
     sealedNote: meta?.sealed ?? null,
     txHash: meta?.tx_hash ?? null,
+    recipient: meta?.recipient ?? null,
   });
 });
 
 app.post("/api/relay/claim", async (c) => {
   rateLimit(c);
   const b = await c.req.json();
-  return c.json(
-    await relayer.claim({
-      claimKey: addr(b.claimKey, "claimKey"),
-      recipient: addr(b.recipient, "recipient"),
-      signature: hex(b.signature, "signature"),
-    }),
-  );
+  const claimKey = addr(b.claimKey, "claimKey");
+  const recipient = addr(b.recipient, "recipient");
+  const result = await relayer.claim({ claimKey, recipient, signature: hex(b.signature, "signature") });
+  store.setLinkRecipient(claimKey, recipient);
+  return c.json(result);
 });
 
 app.post("/api/relay/refund", async (c) => {
