@@ -1,0 +1,3 @@
+node_modules/
+.env
+homeward-orders/dist/

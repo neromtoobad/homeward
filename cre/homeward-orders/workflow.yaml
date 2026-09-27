@@ -1,0 +1,15 @@
+testnet-settings:
+  user-workflow:
+    workflow-name: "homeward-orders-testnet"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.testnet.json"
+    secrets-path: ""
+
+mainnet-settings:
+  user-workflow:
+    workflow-name: "homeward-orders"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.mainnet.json"
+    secrets-path: ""
